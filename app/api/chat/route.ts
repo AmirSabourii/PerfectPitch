@@ -2,10 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { withTimeout, TIMEOUTS } from '@/lib/timeout'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  timeout: TIMEOUTS.OPENAI_CHAT,
-})
+let cachedClient: OpenAI | null = null
+
+function getOpenAIClient() {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    throw new Error('OpenAI API key is not configured.')
+  }
+  if (!cachedClient) {
+    cachedClient = new OpenAI({ apiKey })
+  }
+  return cachedClient
+}
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -68,6 +76,7 @@ export async function POST(request: NextRequest) {
       })
     })
 
+    const openai = getOpenAIClient()
     const response = await withTimeout(
       openai.chat.completions.create({
         model: 'gpt-4o-mini',

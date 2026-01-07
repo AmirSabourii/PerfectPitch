@@ -17,25 +17,52 @@ export async function withTimeout<T>(
   return Promise.race([promise, timeout])
 }
 
-/**
- * Timeout values for different operations (in milliseconds)
- * Adjusted for Netlify's 10-second FREE TIER limit
- * 
- * CRITICAL: Netlify free tier has 10-second HARD LIMIT
- * These timeouts must be LESS than 10 seconds to allow for:
- * - Auth verification (~1-2s)
- * - Request parsing (~0.5s)
- * - Response overhead (~0.5s)
- * - Total budget: ~7-8 seconds for OpenAI
- */
-export const TIMEOUTS = {
-  OPENAI_TRANSCRIBE: 7000, // 7 seconds for audio transcription (Netlify free tier)
-  OPENAI_CHAT: 7000, // 7 seconds for chat completion (Netlify free tier)
-  OPENAI_ANALYSIS: 7000, // 7 seconds for pitch analysis (Netlify free tier)
-  OPENAI_REALTIME_SESSION: 5000, // 5 seconds for session creation
-  PDF_PARSE: 7000, // 7 seconds for PDF parsing (Netlify free tier)
-  FIREBASE_OPERATION: 3000, // 3 seconds for Firebase operations (Netlify free tier)
+type TimeoutConfig = {
+  OPENAI_TRANSCRIBE: number
+  OPENAI_CHAT: number
+  OPENAI_ANALYSIS: number
+  OPENAI_REALTIME_SESSION: number
+  PDF_PARSE: number
+  FIREBASE_OPERATION: number
 }
+
+const TIMEOUT_PRESETS: Record<string, TimeoutConfig> = {
+  /**
+   * Original 10s-limited configuration for Netlify free tier
+   */
+  netlify: {
+    OPENAI_TRANSCRIBE: 7000,
+    OPENAI_CHAT: 7000,
+    OPENAI_ANALYSIS: 7000,
+    OPENAI_REALTIME_SESSION: 5000,
+    PDF_PARSE: 7000,
+    FIREBASE_OPERATION: 3000,
+  },
+  /**
+   * Railway/General server preset with higher limits
+   */
+  railway: {
+    OPENAI_TRANSCRIBE: 60000,
+    OPENAI_CHAT: 45000,
+    OPENAI_ANALYSIS: 60000,
+    OPENAI_REALTIME_SESSION: 45000,
+    PDF_PARSE: 45000,
+    FIREBASE_OPERATION: 10000,
+  },
+}
+
+const resolvePreset = () => {
+  const explicit = process.env.TIMEOUT_PRESET?.toLowerCase()
+  if (explicit && TIMEOUT_PRESETS[explicit]) {
+    return explicit
+  }
+  if (process.env.RAILWAY_ENVIRONMENT) {
+    return 'railway'
+  }
+  return 'netlify'
+}
+
+export const TIMEOUTS = TIMEOUT_PRESETS[resolvePreset()]
 
 // Maximum content length to prevent timeout (in characters)
 // Reduced aggressively for Netlify's 10-second FREE TIER limit
