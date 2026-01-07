@@ -1,5 +1,6 @@
 import { adminDb, isAdminInitialized } from './admin'
 import { FieldValue } from 'firebase-admin/firestore'
+import type { DocumentSnapshot } from 'firebase-admin/firestore'
 import { withTimeout, TIMEOUTS } from './timeout'
 
 export type PlanType = 'starter' | 'pro'
@@ -28,7 +29,7 @@ export async function getUserPlan(uid: string): Promise<PlanType> {
             adminDb.collection('users').doc(uid).get(),
             TIMEOUTS.FIREBASE_OPERATION,
             'Firebase operation timed out'
-        )
+        ) as DocumentSnapshot
         const data = userDoc.data()
         return (data?.plan as PlanType) || 'starter'
     } catch (error: any) {
@@ -49,7 +50,7 @@ export async function checkUsage(uid: string, feature: 'analysis' | 'roleplay') 
             userRef.get(),
             TIMEOUTS.FIREBASE_OPERATION,
             'Firebase operation timed out'
-        )
+        ) as DocumentSnapshot
 
         if (!userDoc.exists) {
             // Create default user doc if not exists
