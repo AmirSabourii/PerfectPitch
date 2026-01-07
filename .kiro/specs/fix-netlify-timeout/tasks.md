@@ -6,13 +6,13 @@ This plan fixes the 504 timeout errors caused by an invalid `timeout` parameter 
 
 ## Tasks
 
-- [ ] 1. Fix OpenAI SDK initialization
-  - [ ] 1.1 Remove invalid timeout parameter from OpenAI constructor in `lib/aiAnalyzer.ts`
+- [x] 1. Fix OpenAI SDK initialization
+  - [x] 1.1 Remove invalid timeout parameter from OpenAI constructor in `lib/aiAnalyzer.ts`
     - Remove `timeout: TIMEOUTS.OPENAI_ANALYSIS` from the OpenAI client constructor
     - The OpenAI SDK doesn't accept a `timeout` parameter in the constructor
     - _Requirements: 1.1, 1.2_
 
-  - [ ] 1.2 Implement request-level timeout using AbortController
+  - [x] 1.2 Implement request-level timeout using AbortController
     - Create AbortController before OpenAI API call
     - Set timeout to abort after TIMEOUTS.OPENAI_ANALYSIS milliseconds
     - Pass signal to openai.chat.completions.create() options

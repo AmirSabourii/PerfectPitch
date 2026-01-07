@@ -3,10 +3,19 @@ import { SlideContent } from './pdfProcessor'
 import { DeepAnalysisResult } from './types'
 import { TIMEOUTS } from './timeout'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  timeout: TIMEOUTS.OPENAI_ANALYSIS, // Client-level timeout
-})
+// Lazily instantiate the OpenAI client so builds don't require the env var
+let cachedClient: OpenAI | null = null
+
+function getOpenAIClient() {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    throw new Error('OpenAI API key is not configured.')
+  }
+  if (!cachedClient) {
+    cachedClient = new OpenAI({ apiKey })
+  }
+  return cachedClient
+}
 
 // --- Interfaces ---
 // Moved to lib/types.ts
@@ -31,7 +40,7 @@ export async function analyzePitchDeck(
     let contentContext = ''
 
     // Truncate transcript if too long (additional safety check)
-    const MAX_TRANSCRIPT_LENGTH = 15000 // Reduced for Netlify
+    const MAX_TRANSCRIPT_LENGTH = 8000 // Reduced for Netlify FREE TIER (10s limit)
     let processedTranscript = input.transcript
     if (processedTranscript && processedTranscript.length > MAX_TRANSCRIPT_LENGTH) {
       console.warn(`[analyzePitchDeck] Transcript too long (${processedTranscript.length} chars), truncating`)
@@ -47,7 +56,7 @@ export async function analyzePitchDeck(
         .map((slide) => `Slide ${slide.pageNumber}:\n${slide.text}`)
         .join('\n---\n')
       // Truncate slides if too long
-      const MAX_SLIDES_LENGTH = 15000 // Reduced for Netlify
+      const MAX_SLIDES_LENGTH = 8000 // Reduced for Netlify FREE TIER (10s limit)
       const finalSlidesText = slidesText.length > MAX_SLIDES_LENGTH 
         ? slidesText.substring(0, MAX_SLIDES_LENGTH) + '\n\n[SLIDES CONTENT TRUNCATED]'
         : slidesText
@@ -112,35 +121,45 @@ Output JSON:
       })
     }
 
-    // 4. Call OpenAI with timeout protection
-    const { withTimeout, TIMEOUTS } = await import('./timeout')
-    
+    // 4. Call OpenAI with AbortController for timeout
     console.log(`[analyzePitchDeck] Calling OpenAI (elapsed: ${Date.now() - startTime}ms)`)
+    
+    // Create AbortController for request timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => {
+      console.warn(`[analyzePitchDeck] Aborting OpenAI request after ${TIMEOUTS.OPENAI_ANALYSIS}ms`)
+      controller.abort()
+    }, TIMEOUTS.OPENAI_ANALYSIS)
+    
     let response: any
     try {
-      response = await withTimeout(
-        openai.chat.completions.create({
-          model: 'gpt-4o-mini', // Lighter model for speed
-          messages: conversationMessages,
-          response_format: { type: 'json_object' },
-          max_tokens: 2000, // Reduced from 2500 for faster response
-          temperature: 0.5,
-        }),
-        TIMEOUTS.OPENAI_ANALYSIS,
-        'AI analysis timed out. Please try again with shorter content.'
-      )
+      const openai = getOpenAIClient()
+      response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini', // Lighter model for speed
+        messages: conversationMessages,
+        response_format: { type: 'json_object' },
+        max_tokens: 1500, // Reduced from 2000 for faster response on free tier
+        temperature: 0.5,
+      }, {
+        signal: controller.signal, // Pass abort signal
+      })
+      clearTimeout(timeoutId)
       console.log(`[analyzePitchDeck] OpenAI responded in ${Date.now() - startTime}ms`)
     } catch (openaiError: any) {
+      clearTimeout(timeoutId)
       console.error('[analyzePitchDeck] OpenAI error:', openaiError.message)
+      
+      // Handle abort/timeout
+      if (openaiError.name === 'AbortError' || openaiError.code === 'ABORT_ERR') {
+        throw new Error('AI analysis timed out. Please try with shorter content.')
+      }
+      
       // Handle OpenAI-specific errors
       if (openaiError.status === 429) {
         throw new Error('OpenAI rate limit exceeded. Please try again later.')
       }
       if (openaiError.status === 401) {
         throw new Error('OpenAI API key is invalid.')
-      }
-      if (openaiError.message?.includes('timed out')) {
-        throw new Error('AI analysis timed out. Please try with shorter content.')
       }
       throw new Error(`OpenAI API error: ${openaiError.message || 'Unknown error'}`)
     }

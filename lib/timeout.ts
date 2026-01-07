@@ -19,21 +19,25 @@ export async function withTimeout<T>(
 
 /**
  * Timeout values for different operations (in milliseconds)
- * Adjusted for Netlify's 10-second free tier / 26-second Pro tier limits
+ * Adjusted for Netlify's 10-second FREE TIER limit
  * 
- * IMPORTANT: Netlify free tier has 10-second timeout, Pro has 26 seconds
- * These timeouts must be LESS than the platform limit to allow for overhead
+ * CRITICAL: Netlify free tier has 10-second HARD LIMIT
+ * These timeouts must be LESS than 10 seconds to allow for:
+ * - Auth verification (~1-2s)
+ * - Request parsing (~0.5s)
+ * - Response overhead (~0.5s)
+ * - Total budget: ~7-8 seconds for OpenAI
  */
 export const TIMEOUTS = {
-  OPENAI_TRANSCRIBE: 20000, // 20 seconds for audio transcription (reduced for Netlify)
-  OPENAI_CHAT: 15000, // 15 seconds for chat completion (reduced for Netlify)
-  OPENAI_ANALYSIS: 20000, // 20 seconds for pitch analysis (reduced for Netlify)
-  OPENAI_REALTIME_SESSION: 8000, // 8 seconds for session creation
-  PDF_PARSE: 15000, // 15 seconds for PDF parsing (reduced for Netlify)
-  FIREBASE_OPERATION: 5000, // 5 seconds for Firebase operations (reduced for Netlify)
+  OPENAI_TRANSCRIBE: 7000, // 7 seconds for audio transcription (Netlify free tier)
+  OPENAI_CHAT: 7000, // 7 seconds for chat completion (Netlify free tier)
+  OPENAI_ANALYSIS: 7000, // 7 seconds for pitch analysis (Netlify free tier)
+  OPENAI_REALTIME_SESSION: 5000, // 5 seconds for session creation
+  PDF_PARSE: 7000, // 7 seconds for PDF parsing (Netlify free tier)
+  FIREBASE_OPERATION: 3000, // 3 seconds for Firebase operations (Netlify free tier)
 }
 
 // Maximum content length to prevent timeout (in characters)
-// Reduced for Netlify's shorter timeout limits
-export const MAX_CONTENT_LENGTH = 15000 // ~15k chars to stay within Netlify timeout
+// Reduced aggressively for Netlify's 10-second FREE TIER limit
+export const MAX_CONTENT_LENGTH = 8000 // ~8k chars to stay within Netlify free tier timeout
 
