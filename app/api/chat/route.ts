@@ -85,15 +85,42 @@ export async function POST(request: NextRequest) {
       message: aiMessage,
     })
   } catch (error: any) {
-    console.error('Error in chat:', error.message)
+    const isTimeout = error.message?.includes('timed out') || error.message?.includes('timeout')
     
-    // Handle timeout errors
-    if (error.message?.includes('timed out') || error.message?.includes('timeout')) {
+    // Full logging for 504 errors
+    if (isTimeout) {
+      console.error('='.repeat(80))
+      console.error('[chat] 504 TIMEOUT ERROR - FULL DETAILS:')
+      console.error('='.repeat(80))
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+      console.error('Error name:', error.name)
+      console.error('Error code:', error.code)
+      console.error('Error type:', error.type)
+      console.error('Error status:', error.status)
+      console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2))
+      console.error('TIMEOUTS.OPENAI_CHAT:', TIMEOUTS.OPENAI_CHAT, 'ms')
+      console.error('='.repeat(80))
+      
       return NextResponse.json(
-        { error: 'Chat request timed out. Please try again.' },
+        { 
+          error: 'Chat request timed out. Please try again.',
+          details: {
+            error: error.message,
+            timeout: TIMEOUTS.OPENAI_CHAT,
+            stack: error.stack
+          }
+        },
         { status: 504 }
       )
     }
+    
+    console.error('[chat] Error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      code: error.code
+    })
     
     return NextResponse.json(
       { error: error.message || 'خطا در پردازش پیام' },

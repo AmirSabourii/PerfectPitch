@@ -102,11 +102,39 @@ export default function RealtimeConversation({
         if (!isMounted) return
         if (!response.ok) {
           let errText = ''
+          let errData: any = {}
           try {
             errText = await response.text()
+            try {
+              errData = JSON.parse(errText)
+            } catch {
+              // Not JSON, use text
+            }
           } catch (e) {
             errText = 'Failed to read error text'
           }
+          
+          // Full logging for 504 errors
+          if (response.status === 504) {
+            console.error('='.repeat(80))
+            console.error('[RealtimeConversation] 504 TIMEOUT ERROR - CLIENT SIDE:')
+            console.error('='.repeat(80))
+            console.error('Response status:', response.status)
+            console.error('Response statusText:', response.statusText)
+            console.error('Response headers:', Object.fromEntries(response.headers.entries()))
+            console.error('Response body (text):', errText)
+            console.error('Response body (parsed):', errData)
+            console.error('Request URL:', '/api/realtime/sessions')
+            console.error('Request payload:', {
+              role,
+              hasDocumentContext: !!documentContext,
+              hasTranscript: !!pitchContext?.transcript,
+              hasContextData: !!contextData,
+              hasAnalysisResult: !!analysisResult
+            })
+            console.error('='.repeat(80))
+          }
+          
           throw new Error(`Failed to start session: ${errText}`)
         }
 
@@ -177,7 +205,26 @@ export default function RealtimeConversation({
         }
 
       } catch (err: any) {
-        console.error(err)
+        const isTimeout = err.name === 'AbortError' || err.message?.includes('aborted') || err.message?.includes('504') || err.message?.includes('timed out')
+        
+        // Full logging for timeout errors
+        if (isTimeout) {
+          console.error('='.repeat(80))
+          console.error('[RealtimeConversation] TIMEOUT ERROR - CLIENT SIDE:')
+          console.error('='.repeat(80))
+          console.error('Error name:', err.name)
+          console.error('Error message:', err.message)
+          console.error('Error stack:', err.stack)
+          console.error('Full error:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2))
+          console.error('='.repeat(80))
+        } else {
+          console.error('[RealtimeConversation] Error:', {
+            name: err.name,
+            message: err.message,
+            stack: err.stack
+          })
+        }
+        
         if (isMounted) {
           // Handle abort/timeout errors
           if (err.name === 'AbortError' || err.message?.includes('aborted')) {

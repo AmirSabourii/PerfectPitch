@@ -19,17 +19,21 @@ export async function withTimeout<T>(
 
 /**
  * Timeout values for different operations (in milliseconds)
- * Increased significantly to prevent timeout errors during startup
+ * Adjusted for Netlify's 10-second free tier / 26-second Pro tier limits
+ * 
+ * IMPORTANT: Netlify free tier has 10-second timeout, Pro has 26 seconds
+ * These timeouts must be LESS than the platform limit to allow for overhead
  */
 export const TIMEOUTS = {
-  OPENAI_TRANSCRIBE: 300000, // 300 seconds (5 minutes) for audio transcription
-  OPENAI_CHAT: 120000, // 120 seconds (2 minutes) for chat completion
-  OPENAI_ANALYSIS: 300000, // 300 seconds (5 minutes) for pitch analysis - unlimited for startup
-  OPENAI_REALTIME_SESSION: 60000, // 60 seconds for session creation
-  PDF_PARSE: 120000, // 120 seconds (2 minutes) for PDF parsing
-  FIREBASE_OPERATION: 30000, // 30 seconds for Firebase operations
+  OPENAI_TRANSCRIBE: 20000, // 20 seconds for audio transcription (reduced for Netlify)
+  OPENAI_CHAT: 15000, // 15 seconds for chat completion (reduced for Netlify)
+  OPENAI_ANALYSIS: 20000, // 20 seconds for pitch analysis (reduced for Netlify)
+  OPENAI_REALTIME_SESSION: 8000, // 8 seconds for session creation
+  PDF_PARSE: 15000, // 15 seconds for PDF parsing (reduced for Netlify)
+  FIREBASE_OPERATION: 5000, // 5 seconds for Firebase operations (reduced for Netlify)
 }
 
 // Maximum content length to prevent timeout (in characters)
-export const MAX_CONTENT_LENGTH = 30000 // ~30k chars to prevent timeout
+// Reduced for Netlify's shorter timeout limits
+export const MAX_CONTENT_LENGTH = 15000 // ~15k chars to stay within Netlify timeout
 

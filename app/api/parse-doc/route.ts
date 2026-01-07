@@ -53,15 +53,44 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ text: cleanText })
     } catch (error: any) {
-        console.error('Parse error:', error.message)
+        const isTimeout = error.message?.includes('timed out') || error.message?.includes('timeout')
         
-        // Handle timeout errors
-        if (error.message?.includes('timed out') || error.message?.includes('timeout')) {
+        // Full logging for 504 errors
+        if (isTimeout) {
+            console.error('='.repeat(80))
+            console.error('[parse-doc] 504 TIMEOUT ERROR - FULL DETAILS:')
+            console.error('='.repeat(80))
+            console.error('Error message:', error.message)
+            console.error('Error stack:', error.stack)
+            console.error('Error name:', error.name)
+            console.error('Error code:', error.code)
+            console.error('File size:', fileSize, 'bytes')
+            console.error('File name:', file.name)
+            console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2))
+            console.error('TIMEOUTS.PDF_PARSE:', TIMEOUTS.PDF_PARSE, 'ms')
+            console.error('='.repeat(80))
+            
             return NextResponse.json(
-                { error: 'PDF parsing timed out. Please try with a smaller file.' },
+                { 
+                    error: 'PDF parsing timed out. Please try with a smaller file.',
+                    details: {
+                        error: error.message,
+                        timeout: TIMEOUTS.PDF_PARSE,
+                        fileSize: fileSize,
+                        fileName: file.name
+                    }
+                },
                 { status: 504 }
             )
         }
+        
+        console.error('[parse-doc] Error:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+            code: error.code,
+            fileSize: fileSize
+        })
         
         return NextResponse.json(
             { error: error.message || 'Failed to parse document' },

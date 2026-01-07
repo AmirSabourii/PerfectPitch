@@ -21,15 +21,18 @@ export async function analyzePitchDeck(
     targetAudience?: string // New
   }
 ): Promise<DeepAnalysisResult> {
+  const startTime = Date.now()
+  console.log('[analyzePitchDeck] Starting analysis')
+  
   try {
     // 1. Prepare Context
     let contentContext = ''
 
     // Truncate transcript if too long (additional safety check)
-    const MAX_TRANSCRIPT_LENGTH = 30000
+    const MAX_TRANSCRIPT_LENGTH = 15000 // Reduced for Netlify
     let processedTranscript = input.transcript
     if (processedTranscript && processedTranscript.length > MAX_TRANSCRIPT_LENGTH) {
-      console.warn(`Transcript too long (${processedTranscript.length} chars), truncating`)
+      console.warn(`[analyzePitchDeck] Transcript too long (${processedTranscript.length} chars), truncating`)
       processedTranscript = processedTranscript.substring(0, MAX_TRANSCRIPT_LENGTH) + '\n\n[CONTENT TRUNCATED]'
     }
 
@@ -42,7 +45,7 @@ export async function analyzePitchDeck(
         .map((slide) => `Slide ${slide.pageNumber}:\n${slide.text}`)
         .join('\n---\n')
       // Truncate slides if too long
-      const MAX_SLIDES_LENGTH = 30000
+      const MAX_SLIDES_LENGTH = 15000 // Reduced for Netlify
       const finalSlidesText = slidesText.length > MAX_SLIDES_LENGTH 
         ? slidesText.substring(0, MAX_SLIDES_LENGTH) + '\n\n[SLIDES CONTENT TRUNCATED]'
         : slidesText
@@ -110,21 +113,24 @@ Output JSON:
     // 4. Call OpenAI with timeout protection
     const { withTimeout, TIMEOUTS } = await import('./timeout')
     
+    console.log(`[analyzePitchDeck] Calling OpenAI (elapsed: ${Date.now() - startTime}ms)`)
     let response: any
     try {
       response = await withTimeout(
         openai.chat.completions.create({
-          model: 'gpt-4o-mini', // Switched to lighter model
+          model: 'gpt-4o-mini', // Lighter model for speed
           messages: conversationMessages,
           response_format: { type: 'json_object' },
-          max_tokens: 2500, // Reduced from 3500
-          temperature: 0.5, // Lower temperature for more consistent scoring
-          timeout: TIMEOUTS.OPENAI_ANALYSIS, // Set timeout
+          max_tokens: 2000, // Reduced from 2500 for faster response
+          temperature: 0.5,
+          timeout: TIMEOUTS.OPENAI_ANALYSIS - 2000, // Leave 2s buffer for processing
         } as any),
         TIMEOUTS.OPENAI_ANALYSIS,
         'AI analysis timed out. Please try again with shorter content.'
       )
+      console.log(`[analyzePitchDeck] OpenAI responded in ${Date.now() - startTime}ms`)
     } catch (openaiError: any) {
+      console.error('[analyzePitchDeck] OpenAI error:', openaiError.message)
       // Handle OpenAI-specific errors
       if (openaiError.status === 429) {
         throw new Error('OpenAI rate limit exceeded. Please try again later.')
@@ -144,16 +150,17 @@ Output JSON:
     let parsed: DeepAnalysisResult
     try {
       parsed = JSON.parse(content) as DeepAnalysisResult
+      console.log(`[analyzePitchDeck] Analysis complete in ${Date.now() - startTime}ms`)
     } catch (parseError: any) {
-      console.error('Failed to parse OpenAI response:', parseError)
-      console.error('Response content:', content.substring(0, 500))
+      console.error('[analyzePitchDeck] Failed to parse OpenAI response:', parseError)
+      console.error('[analyzePitchDeck] Response content:', content.substring(0, 500))
       throw new Error('Failed to parse AI analysis response. Please try again.')
     }
 
     return parsed
 
   } catch (error: any) {
-    console.error('Error in analyzePitchDeck:', error)
+    console.error('[analyzePitchDeck] Error:', error)
     // Rethrow with better error message
     throw new Error(error.message || 'Failed to analyze pitch')
   }

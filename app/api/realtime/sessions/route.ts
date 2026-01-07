@@ -45,13 +45,25 @@ export async function POST(request: Request) {
                 'Authentication timed out'
             ) as admin.auth.DecodedIdToken
         } catch (e: any) {
-            console.error("Token verification failed:", e.message)
             if (e.message?.includes('timed out')) {
+                console.error('='.repeat(80))
+                console.error('[realtime/sessions] 504 TIMEOUT - AUTH TOKEN VERIFICATION:')
+                console.error('='.repeat(80))
+                console.error('Error:', JSON.stringify(e, Object.getOwnPropertyNames(e), 2))
+                console.error('TIMEOUTS.FIREBASE_OPERATION:', TIMEOUTS.FIREBASE_OPERATION, 'ms')
+                console.error('='.repeat(80))
+                
                 return NextResponse.json(
-                    { error: 'Authentication timed out. Please try again.' },
+                    { 
+                        error: 'Authentication timed out. Please try again.',
+                        details: {
+                            timeout: TIMEOUTS.FIREBASE_OPERATION
+                        }
+                    },
                     { status: 504 }
                 )
             }
+            console.error("[realtime/sessions] Token verification failed:", e.message)
             return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 })
         }
         const uid = decodedToken.uid
@@ -66,8 +78,20 @@ export async function POST(request: Request) {
             )
         } catch (e: any) {
             if (e.message?.includes('timed out')) {
+                console.error('='.repeat(80))
+                console.error('[realtime/sessions] 504 TIMEOUT - REQUEST BODY PARSING:')
+                console.error('='.repeat(80))
+                console.error('Error:', JSON.stringify(e, Object.getOwnPropertyNames(e), 2))
+                console.error('TIMEOUTS.FIREBASE_OPERATION:', TIMEOUTS.FIREBASE_OPERATION, 'ms')
+                console.error('='.repeat(80))
+                
                 return NextResponse.json(
-                    { error: 'Request body too large or parsing timed out. Please try again.' },
+                    { 
+                        error: 'Request body too large or parsing timed out. Please try again.',
+                        details: {
+                            timeout: TIMEOUTS.FIREBASE_OPERATION
+                        }
+                    },
                     { status: 504 }
                 )
             }
@@ -183,15 +207,42 @@ export async function POST(request: Request) {
 
         return NextResponse.json(data)
     } catch (error: any) {
-        console.error('Error in realtime/sessions:', error.message)
+        const isTimeout = error.message?.includes('timed out') || error.message?.includes('timeout')
         
-        // Handle timeout errors
-        if (error.message?.includes('timed out') || error.message?.includes('timeout')) {
+        // Full logging for 504 errors
+        if (isTimeout) {
+            console.error('='.repeat(80))
+            console.error('[realtime/sessions] 504 TIMEOUT ERROR - FULL DETAILS:')
+            console.error('='.repeat(80))
+            console.error('Error message:', error.message)
+            console.error('Error stack:', error.stack)
+            console.error('Error name:', error.name)
+            console.error('Error code:', error.code)
+            console.error('Error type:', error.type)
+            console.error('Error status:', error.status)
+            console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2))
+            console.error('='.repeat(80))
+            
             return NextResponse.json(
-                { error: error.message || 'Session creation timed out. Please try again.' },
+                { 
+                    error: error.message || 'Session creation timed out. Please try again.',
+                    details: {
+                        error: error.message,
+                        stack: error.stack,
+                        name: error.name,
+                        code: error.code
+                    }
+                },
                 { status: 504 }
             )
         }
+        
+        console.error('[realtime/sessions] Error:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+            code: error.code
+        })
         
         return NextResponse.json(
             { error: error.message || 'Failed to create session. Please try again.' },

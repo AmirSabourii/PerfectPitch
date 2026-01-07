@@ -92,19 +92,40 @@ export function usePitchAnalysis() {
 
             if (!analyzeResponse.ok) {
                 let errData: any = {}
+                let responseText = ''
                 try {
-                    errData = await analyzeResponse.json()
+                    responseText = await analyzeResponse.text()
+                    errData = JSON.parse(responseText)
                 } catch (e) {
                     // If response is not JSON, use status text
                     errData = { error: analyzeResponse.statusText || 'Analysis failed' }
+                    responseText = analyzeResponse.statusText || 'No response text'
                 }
+                
+                // Full logging for 504 errors
+                if (analyzeResponse.status === 504) {
+                    console.error('='.repeat(80))
+                    console.error('[usePitchAnalysis] 504 TIMEOUT ERROR - CLIENT SIDE:')
+                    console.error('='.repeat(80))
+                    console.error('Response status:', analyzeResponse.status)
+                    console.error('Response statusText:', analyzeResponse.statusText)
+                    console.error('Response headers:', Object.fromEntries(analyzeResponse.headers.entries()))
+                    console.error('Response body (text):', responseText)
+                    console.error('Response body (parsed):', errData)
+                    console.error('Request URL:', '/api/analyze-pitch')
+                    console.error('Request method:', 'POST')
+                    console.error('Payload size:', JSON.stringify(payload).length, 'chars')
+                    console.error('Transcript length:', payload.transcript?.length || 0)
+                    console.error('File context length:', payload.file_context?.length || 0)
+                    console.error('='.repeat(80))
+                    
+                    setError('Analysis timed out. The content might be too long. Please try with shorter content.')
+                    throw new Error('Analysis timed out')
+                }
+                
                 if (analyzeResponse.status === 403 && errData.requiresUpgrade) {
                     setError(errData.error || "Please upgrade to Pro to continue.")
                     throw new Error(errData.error || "Upgrade required")
-                }
-                if (analyzeResponse.status === 504) {
-                    setError('Analysis timed out. The content might be too long. Please try with shorter content.')
-                    throw new Error('Analysis timed out')
                 }
                 throw new Error(errData.error || 'Analysis failed')
             }
@@ -138,10 +159,24 @@ export function usePitchAnalysis() {
 
             setPhase('results')
         } catch (err: any) {
-            // Handle abort/timeout errors
-            if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+            // Full logging for timeout/abort errors
+            if (err.name === 'AbortError' || err.message?.includes('aborted') || err.message?.includes('timed out')) {
+                console.error('='.repeat(80))
+                console.error('[usePitchAnalysis] TIMEOUT/ABORT ERROR - CLIENT SIDE:')
+                console.error('='.repeat(80))
+                console.error('Error name:', err.name)
+                console.error('Error message:', err.message)
+                console.error('Error stack:', err.stack)
+                console.error('Full error:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2))
+                console.error('='.repeat(80))
+                
                 setError('Request timed out. Please try again with shorter content.')
             } else {
+                console.error('[usePitchAnalysis] Error:', {
+                    name: err.name,
+                    message: err.message,
+                    stack: err.stack
+                })
                 setError(err.message || 'An error occurred. Please try again.')
             }
             setPhase('recording')

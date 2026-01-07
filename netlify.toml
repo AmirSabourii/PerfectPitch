@@ -2,5 +2,17 @@
   command = "npm run build"
   publish = ".next"
 
+[functions]
+  # Increase timeout to maximum for Netlify (26 seconds for Pro, 10s for free tier)
+  # Note: This requires Netlify Pro plan. Free tier is limited to 10 seconds.
+  node_bundler = "esbuild"
+  
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# Specific timeout for API routes (requires Pro plan)
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/___netlify-server-handler"
+  status = 200
+  force = true

@@ -96,10 +96,34 @@ export async function POST(request: NextRequest) {
       errno: error.errno,
     })
 
-    // Handle timeout errors
+    // Handle timeout errors with full logging
     if (error.message?.includes('timed out') || error.message?.includes('timeout')) {
+      console.error('='.repeat(80))
+      console.error('[transcribe] 504 TIMEOUT ERROR - FULL DETAILS:')
+      console.error('='.repeat(80))
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+      console.error('Error name:', error.name)
+      console.error('Error code:', error.code)
+      console.error('Error type:', error.type)
+      console.error('Error status:', error.status)
+      console.error('Error errno:', error.errno)
+      console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2))
+      console.error('TIMEOUTS.OPENAI_TRANSCRIBE:', TIMEOUTS.OPENAI_TRANSCRIBE, 'ms')
+      console.error('Audio file size:', fileSize, 'bytes')
+      console.error('='.repeat(80))
+      
       return NextResponse.json(
-        { error: 'Transcription request timed out. Please try again with a shorter audio file.' },
+        { 
+          error: 'Transcription request timed out. Please try again with a shorter audio file.',
+          details: {
+            error: error.message,
+            timeout: TIMEOUTS.OPENAI_TRANSCRIBE,
+            fileSize: fileSize,
+            code: error.code,
+            status: error.status
+          }
+        },
         { status: 504 }
       )
     }
