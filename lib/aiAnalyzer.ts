@@ -25,15 +25,28 @@ export async function analyzePitchDeck(
     // 1. Prepare Context
     let contentContext = ''
 
-    if (input.transcript) {
-      contentContext += `TRANSCRIPT:\n${input.transcript}\n\n`
+    // Truncate transcript if too long (additional safety check)
+    const MAX_TRANSCRIPT_LENGTH = 30000
+    let processedTranscript = input.transcript
+    if (processedTranscript && processedTranscript.length > MAX_TRANSCRIPT_LENGTH) {
+      console.warn(`Transcript too long (${processedTranscript.length} chars), truncating`)
+      processedTranscript = processedTranscript.substring(0, MAX_TRANSCRIPT_LENGTH) + '\n\n[CONTENT TRUNCATED]'
+    }
+
+    if (processedTranscript) {
+      contentContext += `TRANSCRIPT:\n${processedTranscript}\n\n`
     }
 
     if (input.slides && input.slides.length > 0) {
       const slidesText = input.slides
         .map((slide) => `Slide ${slide.pageNumber}:\n${slide.text}`)
         .join('\n---\n')
-      contentContext += `SLIDES CONTENT:\n${slidesText}\n\n`
+      // Truncate slides if too long
+      const MAX_SLIDES_LENGTH = 30000
+      const finalSlidesText = slidesText.length > MAX_SLIDES_LENGTH 
+        ? slidesText.substring(0, MAX_SLIDES_LENGTH) + '\n\n[SLIDES CONTENT TRUNCATED]'
+        : slidesText
+      contentContext += `SLIDES CONTENT:\n${finalSlidesText}\n\n`
     }
 
     // 2. Construct System Prompt

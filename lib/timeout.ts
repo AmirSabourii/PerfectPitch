@@ -23,9 +23,12 @@ export async function withTimeout<T>(
 export const TIMEOUTS = {
   OPENAI_TRANSCRIBE: 60000, // 60 seconds for audio transcription
   OPENAI_CHAT: 30000, // 30 seconds for chat completion
-  OPENAI_ANALYSIS: 120000, // 120 seconds for pitch analysis (can be long)
+  OPENAI_ANALYSIS: 180000, // 180 seconds (3 minutes) for pitch analysis - increased for large files
   OPENAI_REALTIME_SESSION: 15000, // 15 seconds for session creation
   PDF_PARSE: 30000, // 30 seconds for PDF parsing
   FIREBASE_OPERATION: 10000, // 10 seconds for Firebase operations
 }
+
+// Maximum content length to prevent timeout (in characters)
+export const MAX_CONTENT_LENGTH = 30000 // ~30k chars to prevent timeout
 

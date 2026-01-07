@@ -3,7 +3,7 @@ import * as admin from 'firebase-admin'
 import { analyzePitchDeck } from '@/lib/aiAnalyzer'
 import { adminAuth, isAdminInitialized } from '@/lib/admin'
 import { checkUsage, incrementUsage } from '@/lib/limits'
-import { withTimeout, TIMEOUTS } from '@/lib/timeout'
+import { withTimeout, TIMEOUTS, MAX_CONTENT_LENGTH } from '@/lib/timeout'
 
 export async function POST(request: Request) {
   try {
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { transcript, file_context, stage, industry, targetAudience } = body
+    let { transcript, file_context, stage, industry, targetAudience } = body
 
     if (!transcript && !file_context) {
       return NextResponse.json(
@@ -65,19 +65,26 @@ export async function POST(request: Request) {
       )
     }
 
-    // Validate input size to prevent timeout
-    const totalLength = (transcript?.length || 0) + (file_context?.length || 0)
-    if (totalLength > 50000) {
-      return NextResponse.json(
-        { error: 'Input too long. Please reduce transcript or file content size.' },
-        { status: 400 }
-      )
+    // Truncate content to prevent timeout - prioritize file_context for file-only mode
+    if (file_context && file_context.length > MAX_CONTENT_LENGTH) {
+      console.warn(`File context too long (${file_context.length} chars), truncating to ${MAX_CONTENT_LENGTH}`)
+      file_context = file_context.substring(0, MAX_CONTENT_LENGTH) + '\n\n[CONTENT TRUNCATED - ANALYSIS BASED ON FIRST PORTION]'
     }
+    
+    if (transcript && transcript.length > MAX_CONTENT_LENGTH) {
+      console.warn(`Transcript too long (${transcript.length} chars), truncating to ${MAX_CONTENT_LENGTH}`)
+      transcript = transcript.substring(0, MAX_CONTENT_LENGTH) + '\n\n[TRANSCRIPT TRUNCATED - ANALYSIS BASED ON FIRST PORTION]'
+    }
+
+    // For file-only mode, use only file_context to avoid duplication
+    const finalTranscript = file_context 
+      ? (transcript ? `CONTEXT FROM DOCUMENTS:\n${file_context}\n\nREMAINING TRANSCRIPT:\n${transcript}` : file_context)
+      : transcript
 
     // Combine transcript and file context with timeout
     const fullAnalysis = await withTimeout(
       analyzePitchDeck({
-        transcript: file_context ? `CONTEXT FROM DOCUMENTS:\n${file_context}\n\nREMAINING TRANSCRIPT:\n${transcript}` : transcript,
+        transcript: finalTranscript,
         stage,
         industry,
         targetAudience
