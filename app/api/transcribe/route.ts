@@ -8,6 +8,8 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 300 // 5 minutes for transcription
 
 export async function POST(request: NextRequest) {
+  let fileSize = 0
+  
   // Check API key first
   if (!process.env.OPENAI_API_KEY) {
     console.error('OPENAI_API_KEY is not set')
@@ -35,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate file size (max 25MB for Whisper)
-    const fileSize = (audioFile as any).size || 0
+    fileSize = (audioFile as any).size || 0
     if (fileSize > 25 * 1024 * 1024) {
       return NextResponse.json(
         { error: 'Audio file too large. Maximum size is 25MB.' },

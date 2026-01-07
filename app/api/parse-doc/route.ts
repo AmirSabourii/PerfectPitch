@@ -6,6 +6,9 @@ export const runtime = 'nodejs'
 export const maxDuration = 120 // 2 minutes for PDF parsing
 
 export async function POST(request: Request) {
+    let fileSize = 0
+    let fileName = 'unknown'
+    
     try {
         const formData = await request.formData()
         const file = formData.get('file') as File
@@ -15,7 +18,9 @@ export async function POST(request: Request) {
         }
 
         // Validate file size (max 10MB for PDF parsing)
-        const fileSize = file.size || 0
+        fileSize = file.size || 0
+        fileName = file.name || 'unknown'
+        
         if (fileSize > 10 * 1024 * 1024) {
             return NextResponse.json(
                 { error: 'File too large. Maximum size is 10MB.' },
@@ -65,7 +70,7 @@ export async function POST(request: Request) {
             console.error('Error name:', error.name)
             console.error('Error code:', error.code)
             console.error('File size:', fileSize, 'bytes')
-            console.error('File name:', file.name)
+            console.error('File name:', fileName)
             console.error('Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2))
             console.error('TIMEOUTS.PDF_PARSE:', TIMEOUTS.PDF_PARSE, 'ms')
             console.error('='.repeat(80))
@@ -77,7 +82,7 @@ export async function POST(request: Request) {
                         error: error.message,
                         timeout: TIMEOUTS.PDF_PARSE,
                         fileSize: fileSize,
-                        fileName: file.name
+                        fileName: fileName
                     }
                 },
                 { status: 504 }
@@ -89,7 +94,8 @@ export async function POST(request: Request) {
             stack: error.stack,
             name: error.name,
             code: error.code,
-            fileSize: fileSize
+            fileSize: fileSize,
+            fileName: fileName
         })
         
         return NextResponse.json(
