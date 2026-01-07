@@ -9,6 +9,7 @@ import { withTimeout, TIMEOUTS, MAX_CONTENT_LENGTH } from '@/lib/timeout'
 // Netlify free tier: 10s, Pro tier: 26s
 export const maxDuration = 300 // Ignored on Netlify
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
   const startTime = Date.now()

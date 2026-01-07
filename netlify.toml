@@ -9,10 +9,3 @@
   
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-
-# Specific timeout for API routes (requires Pro plan)
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/___netlify-server-handler"
-  status = 200
-  force = true
