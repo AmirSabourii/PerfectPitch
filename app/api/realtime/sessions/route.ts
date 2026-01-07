@@ -123,7 +123,14 @@ export async function POST(request: Request) {
                 model: 'gpt-4o-realtime-preview-2024-12-17',
                 modalities: ['audio', 'text'],
                 instructions: baseInstructions,
-                voice: role === 'founder_test' ? 'onyx' : (role === 'mentor' ? 'shimmer' : (role === 'brainstorm' ? 'coral' : 'alloy')), // Onyx is deep/assertive
+                // Use only supported voices
+                voice: role === 'founder_test'
+                    ? 'ash'            // deep/assertive alternative
+                    : role === 'mentor'
+                        ? 'shimmer'
+                        : role === 'brainstorm'
+                            ? 'coral'
+                            : 'alloy',
                 turn_detection: {
                     type: 'server_vad',
                     threshold: 0.6,
