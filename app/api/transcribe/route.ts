@@ -23,13 +23,18 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const audioFile = formData.get('audio')
 
-    if (!(audioFile instanceof Blob)) {
-      console.error('No valid audio file found in formData. Received:', audioFile)
+    if (!audioFile) {
+      console.error('No audio file found in formData. Received:', audioFile)
       return NextResponse.json(
         { error: 'Audio file was not received correctly' },
         { status: 400 }
       )
     }
+
+    const incomingType =
+      (audioFile as any).type && typeof (audioFile as any).type === 'string'
+        ? (audioFile as any).type
+        : undefined
 
     const fileName =
       (audioFile as any).name && typeof (audioFile as any).name === 'string'
@@ -38,17 +43,16 @@ export async function POST(request: NextRequest) {
 
     console.log('Audio file received:', {
       name: fileName,
-      type: (audioFile as any).type,
-      // size is only available on Blob/File
-      size: (audioFile as Blob).size,
+      type: incomingType,
+      size: (audioFile as any).size,
     })
 
-    // Convert Blob from the request into a Node-compatible File using OpenAI helper
-    const arrayBuffer = await (audioFile as Blob).arrayBuffer()
+    // Convert the value from the request into a Node-compatible File using OpenAI helper
+    const arrayBuffer = await (audioFile as any).arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
     const file = await toFile(buffer, fileName, {
-      // Use "type" to satisfy the FilePropertyBag typing
-      type: (audioFile as any).type || 'audio/webm',
+      // Preserve the incoming mime when available (audio/webm or video/webm)
+      type: incomingType || 'audio/webm',
     } as any)
 
     console.log('Calling OpenAI Whisper API...')
