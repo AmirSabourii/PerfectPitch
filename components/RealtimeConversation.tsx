@@ -67,6 +67,10 @@ export default function RealtimeConversation({
         if (!user) throw new Error('Not authenticated')
         const token = await user.getIdToken()
 
+        // Create AbortController for timeout handling (60 seconds)
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 seconds
+
         const response = await fetch('/api/realtime/sessions', {
           method: 'POST',
           headers: {
@@ -90,6 +94,9 @@ export default function RealtimeConversation({
 
             prompt: { id: 'default' }
           }),
+          signal: controller.signal
+        }).finally(() => {
+          clearTimeout(timeoutId)
         })
 
         if (!isMounted) return
@@ -172,7 +179,14 @@ export default function RealtimeConversation({
       } catch (err: any) {
         console.error(err)
         if (isMounted) {
-          setError(err.message || 'Connection failed')
+          // Handle abort/timeout errors
+          if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+            setError('Connection timed out. Please try again.')
+          } else if (err.message?.includes('504') || err.message?.includes('timed out')) {
+            setError('Session creation timed out. Please try again.')
+          } else {
+            setError(err.message || 'Connection failed')
+          }
           setStatus('idle')
         }
         // Force cleanup on error
@@ -186,7 +200,7 @@ export default function RealtimeConversation({
       isMounted = false
       cleanupSession()
     }
-  }, [role, pitchContext, documentContext, cleanupSession])
+  }, [role, pitchContext, documentContext, contextData, analysisResult, user, cleanupSession])
 
   const handleEndCall = () => {
     cleanupSession()

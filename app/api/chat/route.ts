@@ -9,10 +9,32 @@ const openai = new OpenAI({
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const maxDuration = 120 // 2 minutes for chat
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, pitchContext, isInitial } = await request.json()
+    // Parse request body with timeout protection
+    let body: any
+    try {
+      body = await withTimeout(
+        request.json(),
+        TIMEOUTS.FIREBASE_OPERATION,
+        'Request body parsing timed out'
+      )
+    } catch (e: any) {
+      if (e.message?.includes('timed out')) {
+        return NextResponse.json(
+          { error: 'Request body parsing timed out. Please try again.' },
+          { status: 504 }
+        )
+      }
+      return NextResponse.json(
+        { error: 'Invalid request body' },
+        { status: 400 }
+      )
+    }
+    
+    const { messages, pitchContext, isInitial } = body
 
     if (!pitchContext) {
       return NextResponse.json(

@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import pdfParse from 'pdf-parse'
 import { withTimeout, TIMEOUTS } from '@/lib/timeout'
 
+export const runtime = 'nodejs'
+export const maxDuration = 120 // 2 minutes for PDF parsing
+
 export async function POST(request: Request) {
     try {
         const formData = await request.formData()

@@ -5,6 +5,7 @@ import { withTimeout, TIMEOUTS } from '@/lib/timeout'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const maxDuration = 300 // 5 minutes for transcription
 
 export async function POST(request: NextRequest) {
   // Check API key first

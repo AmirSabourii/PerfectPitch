@@ -5,6 +5,10 @@ import { adminAuth, isAdminInitialized } from '@/lib/admin'
 import { checkUsage, incrementUsage } from '@/lib/limits'
 import { withTimeout, TIMEOUTS, MAX_CONTENT_LENGTH } from '@/lib/timeout'
 
+// Increase max duration for long-running analysis (Vercel/Netlify)
+export const maxDuration = 300 // 5 minutes
+export const runtime = 'nodejs'
+
 export async function POST(request: Request) {
   try {
     // 1. Verify User
@@ -55,7 +59,27 @@ export async function POST(request: Request) {
       )
     }
 
-    const body = await request.json()
+    // Parse request body with timeout protection
+    let body: any
+    try {
+      body = await withTimeout(
+        request.json(),
+        TIMEOUTS.FIREBASE_OPERATION,
+        'Request body parsing timed out'
+      )
+    } catch (e: any) {
+      if (e.message?.includes('timed out')) {
+        return NextResponse.json(
+          { error: 'Request body too large or parsing timed out. Please try with smaller content.' },
+          { status: 504 }
+        )
+      }
+      return NextResponse.json(
+        { error: 'Invalid request body' },
+        { status: 400 }
+      )
+    }
+    
     let { transcript, file_context, stage, industry, targetAudience } = body
 
     if (!transcript && !file_context) {

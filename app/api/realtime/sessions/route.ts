@@ -3,6 +3,10 @@ import * as admin from 'firebase-admin'
 import { adminAuth } from '@/lib/admin'
 import { checkUsage, incrementUsage, getUserPlan } from '@/lib/limits'
 
+// Increase max duration for realtime session creation
+export const maxDuration = 60 // 60 seconds
+export const runtime = 'nodejs'
+
 // Role definitions
 const ROLES = {
     // ... existing roles map ...
@@ -77,7 +81,27 @@ export async function POST(request: Request) {
         }
         const uid = decodedToken.uid
 
-        const body = await request.json()
+        // Parse request body with timeout protection
+        let body: any
+        try {
+            body = await withTimeout(
+                request.json(),
+                TIMEOUTS.FIREBASE_OPERATION,
+                'Request body parsing timed out'
+            )
+        } catch (e: any) {
+            if (e.message?.includes('timed out')) {
+                return NextResponse.json(
+                    { error: 'Request body too large or parsing timed out. Please try again.' },
+                    { status: 504 }
+                )
+            }
+            return NextResponse.json(
+                { error: 'Invalid request body' },
+                { status: 400 }
+            )
+        }
+        
         const { prompt, role, documentContext, pitch_transcript } = body
 
         // 2. Check Plan & Role Access

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import OpenAI from 'openai'
+import { withTimeout, TIMEOUTS } from '@/lib/timeout'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -7,6 +8,7 @@ const openai = new OpenAI({
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60 // 60 seconds
 
 // This is a WebSocket handler for Next.js
 // Note: Next.js doesn't natively support WebSocket, so we'll need to use a workaround
@@ -27,7 +29,28 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { pitchContext } = await request.json()
+    // Parse request body with timeout protection
+    let body: any
+    try {
+      body = await withTimeout(
+        request.json(),
+        TIMEOUTS.FIREBASE_OPERATION,
+        'Request body parsing timed out'
+      )
+    } catch (e: any) {
+      if (e.message?.includes('timed out')) {
+        return new Response(
+          JSON.stringify({ error: 'Request body parsing timed out. Please try again.' }),
+          { status: 504, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+      return new Response(
+        JSON.stringify({ error: 'Invalid request body' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+    
+    const { pitchContext } = body
 
     // Create a Realtime API session
     // Note: OpenAI Realtime API requires direct WebSocket connection from client

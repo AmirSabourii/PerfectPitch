@@ -181,28 +181,51 @@ LANGUAGE: All output MUST be in ENGLISH.
     // 4. Call OpenAI with timeout protection
     const { withTimeout, TIMEOUTS } = await import('./timeout')
     
-    const response = await withTimeout(
-      openai.chat.completions.create({
-        model: 'gpt-4o', // or gpt-4-turbo
-        messages: conversationMessages,
-        response_format: { type: 'json_object' },
-        max_tokens: 3500,
-        temperature: 0.5, // Lower temperature for more consistent scoring
-        timeout: TIMEOUTS.OPENAI_ANALYSIS, // Set timeout
-      } as any),
-      TIMEOUTS.OPENAI_ANALYSIS,
-      'AI analysis timed out. Please try again with shorter content.'
-    )
+    let response: any
+    try {
+      response = await withTimeout(
+        openai.chat.completions.create({
+          model: 'gpt-4o', // or gpt-4-turbo
+          messages: conversationMessages,
+          response_format: { type: 'json_object' },
+          max_tokens: 3500,
+          temperature: 0.5, // Lower temperature for more consistent scoring
+          timeout: TIMEOUTS.OPENAI_ANALYSIS, // Set timeout
+        } as any),
+        TIMEOUTS.OPENAI_ANALYSIS,
+        'AI analysis timed out. Please try again with shorter content.'
+      )
+    } catch (openaiError: any) {
+      // Handle OpenAI-specific errors
+      if (openaiError.status === 429) {
+        throw new Error('OpenAI rate limit exceeded. Please try again later.')
+      }
+      if (openaiError.status === 401) {
+        throw new Error('OpenAI API key is invalid.')
+      }
+      if (openaiError.message?.includes('timed out')) {
+        throw new Error('AI analysis timed out. Please try with shorter content.')
+      }
+      throw new Error(`OpenAI API error: ${openaiError.message || 'Unknown error'}`)
+    }
 
     const content = response.choices[0]?.message?.content || '{}'
-    const parsed = JSON.parse(content) as DeepAnalysisResult
+    
+    // Parse JSON with error handling
+    let parsed: DeepAnalysisResult
+    try {
+      parsed = JSON.parse(content) as DeepAnalysisResult
+    } catch (parseError: any) {
+      console.error('Failed to parse OpenAI response:', parseError)
+      console.error('Response content:', content.substring(0, 500))
+      throw new Error('Failed to parse AI analysis response. Please try again.')
+    }
 
     return parsed
 
   } catch (error: any) {
     console.error('Error in analyzePitchDeck:', error)
-    // Return a dummy error object or rethrow
-    // For now, rethrowing to be handled by route
+    // Rethrow with better error message
     throw new Error(error.message || 'Failed to analyze pitch')
   }
 }

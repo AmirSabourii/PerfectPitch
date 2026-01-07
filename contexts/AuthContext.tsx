@@ -49,22 +49,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setUser(authUser);
 
             if (authUser) {
-                // Subscribe to user profile in Firestore
-                const unsubscribeSnapshot = onSnapshot(doc(db, 'users', authUser.uid), (doc) => {
-                    if (doc.exists()) {
-                        setUserProfile(doc.data() as UserProfile);
-                    } else {
-                        // Default profile if not exists
+                // Subscribe to user profile in Firestore with error handling
+                const unsubscribeSnapshot = onSnapshot(
+                    doc(db, 'users', authUser.uid), 
+                    (doc) => {
+                        if (doc.exists()) {
+                            setUserProfile(doc.data() as UserProfile);
+                        } else {
+                            // Default profile if not exists
+                            setUserProfile({
+                                plan: 'starter',
+                                usage: { analysisCount: 0, roleplayMinutes: 0 }
+                            });
+                        }
+                        setLoading(false);
+                    }, 
+                    (error) => {
+                        console.error("Error fetching user profile:", error);
+                        // Set default profile on error to prevent blocking
                         setUserProfile({
                             plan: 'starter',
                             usage: { analysisCount: 0, roleplayMinutes: 0 }
                         });
+                        setLoading(false);
                     }
-                    setLoading(false);
-                }, (error) => {
-                    console.error("Error fetching user profile:", error);
-                    setLoading(false);
-                });
+                );
 
                 return () => unsubscribeSnapshot();
             } else {

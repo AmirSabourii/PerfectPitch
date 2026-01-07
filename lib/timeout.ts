@@ -19,14 +19,15 @@ export async function withTimeout<T>(
 
 /**
  * Timeout values for different operations (in milliseconds)
+ * Increased significantly to prevent timeout errors during startup
  */
 export const TIMEOUTS = {
-  OPENAI_TRANSCRIBE: 60000, // 60 seconds for audio transcription
-  OPENAI_CHAT: 30000, // 30 seconds for chat completion
-  OPENAI_ANALYSIS: 180000, // 180 seconds (3 minutes) for pitch analysis - increased for large files
-  OPENAI_REALTIME_SESSION: 15000, // 15 seconds for session creation
-  PDF_PARSE: 30000, // 30 seconds for PDF parsing
-  FIREBASE_OPERATION: 10000, // 10 seconds for Firebase operations
+  OPENAI_TRANSCRIBE: 300000, // 300 seconds (5 minutes) for audio transcription
+  OPENAI_CHAT: 120000, // 120 seconds (2 minutes) for chat completion
+  OPENAI_ANALYSIS: 300000, // 300 seconds (5 minutes) for pitch analysis - unlimited for startup
+  OPENAI_REALTIME_SESSION: 60000, // 60 seconds for session creation
+  PDF_PARSE: 120000, // 120 seconds (2 minutes) for PDF parsing
+  FIREBASE_OPERATION: 30000, // 30 seconds for Firebase operations
 }
 
 // Maximum content length to prevent timeout (in characters)
