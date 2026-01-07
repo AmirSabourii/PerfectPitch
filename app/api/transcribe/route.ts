@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { toFile } from 'openai/uploads'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,28 +21,33 @@ export async function POST(request: NextRequest) {
 
   try {
     const formData = await request.formData()
-    const audioFile = formData.get('audio') as File
+    const audioFile = formData.get('audio')
 
-    if (!audioFile) {
+    if (!(audioFile instanceof Blob)) {
+      console.error('No valid audio file found in formData. Received:', audioFile)
       return NextResponse.json(
-        { error: 'فایل صوتی ارسال نشده است' },
+        { error: 'Audio file was not received correctly' },
         { status: 400 }
       )
     }
 
+    const fileName =
+      (audioFile as any).name && typeof (audioFile as any).name === 'string'
+        ? (audioFile as any).name
+        : 'recording.webm'
+
     console.log('Audio file received:', {
-      name: audioFile.name,
-      type: audioFile.type,
-      size: audioFile.size,
+      name: fileName,
+      type: (audioFile as any).type,
+      // size is only available on Blob/File
+      size: (audioFile as Blob).size,
     })
 
-    // Convert File to format compatible with OpenAI SDK
-    const arrayBuffer = await audioFile.arrayBuffer()
+    // Convert Blob from the request into a Node-compatible File using OpenAI helper
+    const arrayBuffer = await (audioFile as Blob).arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
-
-    // Use toFile helper from OpenAI SDK for better compatibility
-    const file = new File([buffer], audioFile.name || 'recording.webm', {
-      type: audioFile.type || 'audio/webm',
+    const file = await toFile(buffer, fileName, {
+      contentType: (audioFile as any).type || 'audio/webm',
     })
 
     console.log('Calling OpenAI Whisper API...')
