@@ -119,7 +119,8 @@ export async function POST(request: Request) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                model: 'gpt-4o-mini-realtime-preview-2024-12-17',
+                // Use the same realtime model as the client SDP exchange to avoid mismatch
+                model: 'gpt-4o-realtime-preview-2024-12-17',
                 modalities: ['audio', 'text'],
                 instructions: baseInstructions,
                 voice: role === 'founder_test' ? 'onyx' : (role === 'mentor' ? 'shimmer' : (role === 'brainstorm' ? 'coral' : 'alloy')), // Onyx is deep/assertive
@@ -133,8 +134,17 @@ export async function POST(request: Request) {
         })
 
         if (!response.ok) {
-            const error = await response.json()
-            return NextResponse.json({ error: 'Failed to create OpenAI session', details: error }, { status: response.status })
+            let errorJson: any = null
+            try {
+                errorJson = await response.json()
+            } catch {
+                // ignore parse errors
+            }
+            console.error('OpenAI realtime session error', response.status, errorJson)
+            return NextResponse.json(
+                { error: 'Failed to create OpenAI session', details: errorJson || await response.text() },
+                { status: response.status }
+            )
         }
 
         const data = await response.json()

@@ -93,7 +93,15 @@ export default function RealtimeConversation({
         })
 
         if (!isMounted) return
-        if (!response.ok) throw new Error('Failed to start session')
+        if (!response.ok) {
+          let errText = ''
+          try {
+            errText = await response.text()
+          } catch (e) {
+            errText = 'Failed to read error text'
+          }
+          throw new Error(`Failed to start session: ${errText}`)
+        }
 
         const sessionData = await response.json()
         const ephemeralKey = sessionData.client_secret.value
