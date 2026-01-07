@@ -47,8 +47,9 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await (audioFile as Blob).arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
     const file = await toFile(buffer, fileName, {
-      contentType: (audioFile as any).type || 'audio/webm',
-    })
+      // Use "type" to satisfy the FilePropertyBag typing
+      type: (audioFile as any).type || 'audio/webm',
+    } as any)
 
     console.log('Calling OpenAI Whisper API...')
 
