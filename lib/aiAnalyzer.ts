@@ -1,9 +1,11 @@
 import OpenAI from 'openai'
 import { SlideContent } from './pdfProcessor'
 import { DeepAnalysisResult } from './types'
+import { TIMEOUTS } from './timeout'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  timeout: TIMEOUTS.OPENAI_ANALYSIS, // Client-level timeout
 })
 
 // --- Interfaces ---
@@ -123,8 +125,7 @@ Output JSON:
           response_format: { type: 'json_object' },
           max_tokens: 2000, // Reduced from 2500 for faster response
           temperature: 0.5,
-          timeout: TIMEOUTS.OPENAI_ANALYSIS - 2000, // Leave 2s buffer for processing
-        } as any),
+        }),
         TIMEOUTS.OPENAI_ANALYSIS,
         'AI analysis timed out. Please try again with shorter content.'
       )
