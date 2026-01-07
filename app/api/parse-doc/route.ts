@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import pdfParse from 'pdf-parse'
+import { withTimeout, TIMEOUTS } from '@/lib/timeout'
 
 export async function POST(request: Request) {
     try {
@@ -10,13 +11,26 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
         }
 
+        // Validate file size (max 10MB for PDF parsing)
+        const fileSize = file.size || 0
+        if (fileSize > 10 * 1024 * 1024) {
+            return NextResponse.json(
+                { error: 'File too large. Maximum size is 10MB.' },
+                { status: 400 }
+            )
+        }
+
         const arrayBuffer = await file.arrayBuffer()
         const buffer = Buffer.from(arrayBuffer)
 
         let text = ''
 
         if (file.name.endsWith('.pdf')) {
-            const data = await pdfParse(buffer)
+            const data = await withTimeout(
+                pdfParse(buffer),
+                TIMEOUTS.PDF_PARSE,
+                'PDF parsing timed out. Please try with a smaller file.'
+            )
             text = data.text
         } else {
             // Fallback
@@ -36,7 +50,19 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ text: cleanText })
     } catch (error: any) {
-        console.error('Parse error:', error)
-        return NextResponse.json({ error: error.message || 'Failed to parse document' }, { status: 500 })
+        console.error('Parse error:', error.message)
+        
+        // Handle timeout errors
+        if (error.message?.includes('timed out') || error.message?.includes('timeout')) {
+            return NextResponse.json(
+                { error: 'PDF parsing timed out. Please try with a smaller file.' },
+                { status: 504 }
+            )
+        }
+        
+        return NextResponse.json(
+            { error: error.message || 'Failed to parse document' },
+            { status: 500 }
+        )
     }
 }

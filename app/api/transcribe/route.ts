@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { toFile } from 'openai/uploads'
+import { withTimeout, TIMEOUTS } from '@/lib/timeout'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -17,6 +18,7 @@ export async function POST(request: NextRequest) {
 
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
+    timeout: TIMEOUTS.OPENAI_TRANSCRIBE, // Set default timeout
   })
 
   try {
@@ -27,6 +29,15 @@ export async function POST(request: NextRequest) {
       console.error('No audio file found in formData. Received:', audioFile)
       return NextResponse.json(
         { error: 'Audio file was not received correctly' },
+        { status: 400 }
+      )
+    }
+
+    // Validate file size (max 25MB for Whisper)
+    const fileSize = (audioFile as any).size || 0
+    if (fileSize > 25 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: 'Audio file too large. Maximum size is 25MB.' },
         { status: 400 }
       )
     }
@@ -57,14 +68,18 @@ export async function POST(request: NextRequest) {
 
     console.log('Calling OpenAI Whisper API...')
 
-    // Transcribe using Whisper
-    const transcription = await openai.audio.transcriptions.create({
-      file: file,
-      model: 'whisper-1',
-      language: 'en',
-      prompt: "Startup pitch, technical, venture capital, SaaS, revenue, growth, slides, English speech.",
-      response_format: 'json',
-    })
+    // Transcribe using Whisper with timeout
+    const transcription = await withTimeout(
+      openai.audio.transcriptions.create({
+        file: file,
+        model: 'whisper-1',
+        language: 'en',
+        prompt: "Startup pitch, technical, venture capital, SaaS, revenue, growth, slides, English speech.",
+        response_format: 'json',
+      }),
+      TIMEOUTS.OPENAI_TRANSCRIBE,
+      'Transcription request timed out. Please try again with a shorter audio file.'
+    )
 
     console.log('Transcription successful:', transcription.text?.substring(0, 100))
 
@@ -79,6 +94,14 @@ export async function POST(request: NextRequest) {
       status: error.status,
       errno: error.errno,
     })
+
+    // Handle timeout errors
+    if (error.message?.includes('timed out') || error.message?.includes('timeout')) {
+      return NextResponse.json(
+        { error: 'Transcription request timed out. Please try again with a shorter audio file.' },
+        { status: 504 }
+      )
+    }
 
     // More specific error messages
     if (error.code === 'ECONNREFUSED' || error.errno === 'ECONNREFUSED') {

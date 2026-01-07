@@ -2,5 +2,9 @@
   command = "npm run build"
   publish = ".next"
 
+[functions]
+  # Increase timeout for serverless functions (max 26 seconds on Netlify)
+  timeout = 26
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"

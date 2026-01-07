@@ -1,5 +1,6 @@
-import { adminDb } from './admin'
+import { adminDb, isAdminInitialized } from './admin'
 import { FieldValue } from 'firebase-admin/firestore'
+import { withTimeout, TIMEOUTS } from './timeout'
 
 export type PlanType = 'starter' | 'pro'
 
@@ -17,73 +18,137 @@ export const PLAN_LIMITS = {
 }
 
 export async function getUserPlan(uid: string): Promise<PlanType> {
-    const userDoc = await adminDb.collection('users').doc(uid).get()
-    const data = userDoc.data()
-    return (data?.plan as PlanType) || 'starter'
+    if (!isAdminInitialized() || !adminDb) {
+        console.warn('Firebase Admin not initialized, defaulting to starter plan')
+        return 'starter'
+    }
+
+    try {
+        const userDoc = await withTimeout(
+            adminDb.collection('users').doc(uid).get(),
+            TIMEOUTS.FIREBASE_OPERATION,
+            'Firebase operation timed out'
+        )
+        const data = userDoc.data()
+        return (data?.plan as PlanType) || 'starter'
+    } catch (error: any) {
+        console.error('Error getting user plan:', error.message)
+        return 'starter' // Default to starter on error
+    }
 }
 
 export async function checkUsage(uid: string, feature: 'analysis' | 'roleplay') {
-    const userRef = adminDb.collection('users').doc(uid)
-    const userDoc = await userRef.get()
+    if (!isAdminInitialized() || !adminDb) {
+        console.warn('Firebase Admin not initialized, allowing usage')
+        return { allowed: true, plan: 'starter' as PlanType }
+    }
 
-    if (!userDoc.exists) {
-        // Create default user doc if not exists
-        await userRef.set({
-            plan: 'starter',
-            createdAt: FieldValue.serverTimestamp(),
-            usage: {
-                analysisCount: 0,
-                roleplayMinutes: 0
+    try {
+        const userRef = adminDb.collection('users').doc(uid)
+        const userDoc = await withTimeout(
+            userRef.get(),
+            TIMEOUTS.FIREBASE_OPERATION,
+            'Firebase operation timed out'
+        )
+
+        if (!userDoc.exists) {
+            // Create default user doc if not exists
+            await withTimeout(
+                userRef.set({
+                    plan: 'starter',
+                    createdAt: FieldValue.serverTimestamp(),
+                    usage: {
+                        analysisCount: 0,
+                        roleplayMinutes: 0
+                    }
+                }),
+                TIMEOUTS.FIREBASE_OPERATION,
+                'Firebase operation timed out'
+            )
+            return { allowed: true, plan: 'starter' as PlanType }
+        }
+
+        const userData = userDoc.data() || {}
+        const plan = (userData.plan as PlanType) || 'starter'
+        const usage = userData.usage || { analysisCount: 0, roleplayMinutes: 0 }
+
+        const limits = PLAN_LIMITS[plan]
+
+        if (feature === 'analysis') {
+            if (usage.analysisCount >= limits.analysisLimit) {
+                return { allowed: false, message: `Monthly analysis limit reached for ${plan} plan.`, plan }
             }
-        })
-        return { allowed: true, plan: 'starter' }
-    }
-
-    const userData = userDoc.data() || {}
-    const plan = (userData.plan as PlanType) || 'starter'
-    const usage = userData.usage || { analysisCount: 0, roleplayMinutes: 0 }
-
-    const limits = PLAN_LIMITS[plan]
-
-    if (feature === 'analysis') {
-        if (usage.analysisCount >= limits.analysisLimit) {
-            return { allowed: false, message: `Monthly analysis limit reached for ${plan} plan.`, plan }
+            return { allowed: true, plan }
         }
-        return { allowed: true, plan }
-    }
 
-    if (feature === 'roleplay') {
-        if ((usage.roleplayMinutes || 0) >= limits.roleplayTimeLimit) {
-            return { allowed: false, message: `Roleplay limit reached for ${plan} plan.`, plan }
+        if (feature === 'roleplay') {
+            if ((usage.roleplayMinutes || 0) >= limits.roleplayTimeLimit) {
+                return { allowed: false, message: `Roleplay limit reached for ${plan} plan.`, plan }
+            }
+            return { allowed: true, plan }
         }
-        return { allowed: true, plan }
-    }
 
-    return { allowed: false, message: 'Unknown feature', plan }
+        return { allowed: false, message: 'Unknown feature', plan }
+    } catch (error: any) {
+        console.error('Error checking usage:', error.message)
+        // On error, allow usage to prevent blocking users
+        return { allowed: true, plan: 'starter' as PlanType }
+    }
 }
 
 export async function incrementUsage(uid: string, feature: 'analysis' | 'roleplay', quantity: number = 1) {
-    const userRef = adminDb.collection('users').doc(uid)
+    if (!isAdminInitialized() || !adminDb) {
+        console.warn('Firebase Admin not initialized, skipping usage increment')
+        return
+    }
 
-    if (feature === 'analysis') {
-        await userRef.update({
-            'usage.analysisCount': FieldValue.increment(quantity),
-            'lastUsageDate': FieldValue.serverTimestamp()
-        })
-    } else if (feature === 'roleplay') {
-        await userRef.update({
-            'usage.roleplayMinutes': FieldValue.increment(quantity),
-            'lastUsageDate': FieldValue.serverTimestamp()
-        })
+    try {
+        const userRef = adminDb.collection('users').doc(uid)
+
+        if (feature === 'analysis') {
+            await withTimeout(
+                userRef.update({
+                    'usage.analysisCount': FieldValue.increment(quantity),
+                    'lastUsageDate': FieldValue.serverTimestamp()
+                }),
+                TIMEOUTS.FIREBASE_OPERATION,
+                'Firebase operation timed out'
+            )
+        } else if (feature === 'roleplay') {
+            await withTimeout(
+                userRef.update({
+                    'usage.roleplayMinutes': FieldValue.increment(quantity),
+                    'lastUsageDate': FieldValue.serverTimestamp()
+                }),
+                TIMEOUTS.FIREBASE_OPERATION,
+                'Firebase operation timed out'
+            )
+        }
+    } catch (error: any) {
+        console.error('Error incrementing usage:', error.message)
+        // Don't throw - usage tracking is not critical
     }
 }
 
 export async function reportUsage(uid: string, feature: 'roleplay', quantity: number) {
-    // Call this after a session to record time used
-    const userRef = adminDb.collection('users').doc(uid)
-    if (feature === 'roleplay') {
-        await userRef.update({
-            'usage.roleplayMinutes': FieldValue.increment(quantity)
-        })
+    if (!isAdminInitialized() || !adminDb) {
+        console.warn('Firebase Admin not initialized, skipping usage report')
+        return
+    }
+
+    try {
+        const userRef = adminDb.collection('users').doc(uid)
+        if (feature === 'roleplay') {
+            await withTimeout(
+                userRef.update({
+                    'usage.roleplayMinutes': FieldValue.increment(quantity)
+                }),
+                TIMEOUTS.FIREBASE_OPERATION,
+                'Firebase operation timed out'
+            )
+        }
+    } catch (error: any) {
+        console.error('Error reporting usage:', error.message)
+        // Don't throw - usage tracking is not critical
     }
 }

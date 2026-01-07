@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { withTimeout, TIMEOUTS } from '@/lib/timeout'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  timeout: TIMEOUTS.OPENAI_CHAT,
 })
 
 export const runtime = 'nodejs'
@@ -12,13 +14,20 @@ export async function POST(request: NextRequest) {
   try {
     const { messages, pitchContext, isInitial } = await request.json()
 
+    if (!pitchContext) {
+      return NextResponse.json(
+        { error: 'Pitch context is required' },
+        { status: 400 }
+      )
+    }
+
     const systemPrompt = `You are a tough Tier-1 Venture Capitalist conducting a live Q&A session with a startup founder.
 
 Context from their pitch:
-- Pitch Summary: ${pitchContext.pitch_summary}
-- Weak Points: ${pitchContext.weak_points.join(', ')}
-- Red Flags: ${pitchContext.red_flags.join(', ')}
-- Prepared Questions: ${pitchContext.questions_for_founder.join('; ')}
+- Pitch Summary: ${pitchContext.pitch_summary || 'Not provided'}
+- Weak Points: ${pitchContext.weak_points?.join(', ') || 'None specified'}
+- Red Flags: ${pitchContext.red_flags?.join(', ') || 'None specified'}
+- Prepared Questions: ${pitchContext.questions_for_founder?.join('; ') || 'None specified'}
 
 Your role:
 - Ask challenging questions based on the context
@@ -49,12 +58,16 @@ ${isInitial ? `Start by asking one of the prepared questions or a challenging fo
       })
     })
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: conversationMessages,
-      temperature: 0.8,
-      max_tokens: 500,
-    })
+    const response = await withTimeout(
+      openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: conversationMessages,
+        temperature: 0.8,
+        max_tokens: 500,
+      }),
+      TIMEOUTS.OPENAI_CHAT,
+      'Chat request timed out. Please try again.'
+    )
 
     const aiMessage = response.choices[0]?.message?.content || ''
 
@@ -62,7 +75,16 @@ ${isInitial ? `Start by asking one of the prepared questions or a challenging fo
       message: aiMessage,
     })
   } catch (error: any) {
-    console.error('Error in chat:', error)
+    console.error('Error in chat:', error.message)
+    
+    // Handle timeout errors
+    if (error.message?.includes('timed out') || error.message?.includes('timeout')) {
+      return NextResponse.json(
+        { error: 'Chat request timed out. Please try again.' },
+        { status: 504 }
+      )
+    }
+    
     return NextResponse.json(
       { error: error.message || 'خطا در پردازش پیام' },
       { status: 500 }

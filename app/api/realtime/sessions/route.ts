@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import * as admin from 'firebase-admin'
 import { adminAuth } from '@/lib/admin'
 import { checkUsage, incrementUsage, getUserPlan } from '@/lib/limits'
 
@@ -46,11 +47,32 @@ export async function POST(request: Request) {
         }
         const token = authHeader.split('Bearer ')[1]
 
-        let decodedToken;
+        const { isAdminInitialized } = await import('@/lib/admin')
+        const { withTimeout, TIMEOUTS } = await import('@/lib/timeout')
+        
+        if (!isAdminInitialized() || !adminAuth) {
+            console.error('Firebase Admin not initialized')
+            return NextResponse.json(
+                { error: 'Authentication service unavailable. Please try again later.' },
+                { status: 503 }
+            )
+        }
+
+        let decodedToken: admin.auth.DecodedIdToken;
         try {
-            decodedToken = await adminAuth.verifyIdToken(token)
-        } catch (e) {
-            console.error("Token verification failed:", e)
+            decodedToken = await withTimeout(
+                adminAuth.verifyIdToken(token),
+                TIMEOUTS.FIREBASE_OPERATION,
+                'Authentication timed out'
+            ) as admin.auth.DecodedIdToken
+        } catch (e: any) {
+            console.error("Token verification failed:", e.message)
+            if (e.message?.includes('timed out')) {
+                return NextResponse.json(
+                    { error: 'Authentication timed out. Please try again.' },
+                    { status: 504 }
+                )
+            }
             return NextResponse.json({ error: 'Unauthorized: Invalid token' }, { status: 401 })
         }
         const uid = decodedToken.uid
@@ -119,8 +141,8 @@ export async function POST(request: Request) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                // Use the same realtime model as the client SDP exchange to avoid mismatch
-                model: 'gpt-4o-realtime-preview-2024-12-17',
+                // Use mini realtime model (must match client SDP exchange)
+                model: 'gpt-4o-mini-realtime-preview-2024-12-17',
                 modalities: ['audio', 'text'],
                 instructions: baseInstructions,
                 // Use only supported voices
@@ -156,11 +178,26 @@ export async function POST(request: Request) {
 
         const data = await response.json()
 
-        // 4. Increment usage on success
-        await incrementUsage(uid, 'roleplay')
+        // 4. Increment usage on success (don't wait for it)
+        incrementUsage(uid, 'roleplay').catch(err => {
+            console.error('Failed to increment usage:', err)
+        })
 
         return NextResponse.json(data)
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        console.error('Error in realtime/sessions:', error.message)
+        
+        // Handle timeout errors
+        if (error.message?.includes('timed out') || error.message?.includes('timeout')) {
+            return NextResponse.json(
+                { error: error.message || 'Session creation timed out. Please try again.' },
+                { status: 504 }
+            )
+        }
+        
+        return NextResponse.json(
+            { error: error.message || 'Failed to create session. Please try again.' },
+            { status: 500 }
+        )
     }
 }

@@ -165,14 +165,21 @@ LANGUAGE: All output MUST be in ENGLISH.
       })
     }
 
-    // 4. Call OpenAI
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o', // or gpt-4-turbo
-      messages: conversationMessages,
-      response_format: { type: 'json_object' },
-      max_tokens: 3500,
-      temperature: 0.5, // Lower temperature for more consistent scoring
-    } as any)
+    // 4. Call OpenAI with timeout protection
+    const { withTimeout, TIMEOUTS } = await import('./timeout')
+    
+    const response = await withTimeout(
+      openai.chat.completions.create({
+        model: 'gpt-4o', // or gpt-4-turbo
+        messages: conversationMessages,
+        response_format: { type: 'json_object' },
+        max_tokens: 3500,
+        temperature: 0.5, // Lower temperature for more consistent scoring
+        timeout: TIMEOUTS.OPENAI_ANALYSIS, // Set timeout
+      } as any),
+      TIMEOUTS.OPENAI_ANALYSIS,
+      'AI analysis timed out. Please try again with shorter content.'
+    )
 
     const content = response.choices[0]?.message?.content || '{}'
     const parsed = JSON.parse(content) as DeepAnalysisResult
