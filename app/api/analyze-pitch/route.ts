@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import * as admin from 'firebase-admin'
 import { analyzePitchDeck } from '@/lib/aiAnalyzer'
 import { adminAuth, isAdminInitialized } from '@/lib/admin'
 import { checkUsage, incrementUsage } from '@/lib/limits'
@@ -21,13 +22,13 @@ export async function POST(request: Request) {
       )
     }
 
-    let decodedToken;
+    let decodedToken: admin.auth.DecodedIdToken;
     try {
       decodedToken = await withTimeout(
         adminAuth.verifyIdToken(token),
         TIMEOUTS.FIREBASE_OPERATION,
         'Authentication timed out'
-      )
+      ) as admin.auth.DecodedIdToken
     } catch (e: any) {
       console.error("Token verification failed:", e.message)
       if (e.message?.includes('timed out')) {
