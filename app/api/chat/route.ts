@@ -43,24 +43,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const systemPrompt = `You are a tough Tier-1 Venture Capitalist conducting a live Q&A session with a startup founder.
-
-Context from their pitch:
-- Pitch Summary: ${pitchContext.pitch_summary || 'Not provided'}
-- Weak Points: ${pitchContext.weak_points?.join(', ') || 'None specified'}
-- Red Flags: ${pitchContext.red_flags?.join(', ') || 'None specified'}
-- Prepared Questions: ${pitchContext.questions_for_founder?.join('; ') || 'None specified'}
-
-Your role:
-- Ask challenging questions based on the context
-- Interrupt if answers are vague or evasive (mention this in your response)
-- Follow up immediately on weak points
-- Be direct and critical like a real VC
-- Keep questions short and to the point
-- Challenge assumptions aggressively
-- If the answer is vague, call it out and ask for specifics
-
-${isInitial ? `Start by asking one of the prepared questions or a challenging follow-up based on the pitch analysis. Be direct and start immediately with a question.` : 'Continue the conversation. Be tough and challenge their answers.'}`
+    // Simplified prompt for lighter model
+    const summary = pitchContext.pitch_summary || 'Not provided'
+    const weakPoints = pitchContext.weak_points?.slice(0, 3).join(', ') || 'None'
+    const redFlags = pitchContext.red_flags?.slice(0, 2).join(', ') || 'None'
+    
+    const systemPrompt = `Tough VC Q&A. Context: ${summary}. Weak: ${weakPoints}. Red flags: ${redFlags}. Ask challenging questions. Be direct. Keep responses short. ${isInitial ? 'Start with a question.' : 'Continue tough.'}`
 
     const conversationMessages: any[] = [
       {
@@ -69,8 +57,8 @@ ${isInitial ? `Start by asking one of the prepared questions or a challenging fo
       },
     ]
 
-    // Limit conversation history to reasonable amount to save tokens
-    const recentMessages = messages.slice(-10);
+    // Limit conversation history to save tokens (reduced from 10 to 5)
+    const recentMessages = messages.slice(-5);
 
     // Add conversation history
     recentMessages.forEach((msg: { role: string; content: string }) => {

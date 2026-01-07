@@ -49,113 +49,42 @@ export async function analyzePitchDeck(
       contentContext += `SLIDES CONTENT:\n${finalSlidesText}\n\n`
     }
 
-    // 2. Construct System Prompt
-    const systemPrompt = `
-You are a world-class Venture Capital Analyst and Pitch Coach (Partner level at Sequoia/a16z). 
-You evaluate pitches using a strict "6-Pillar Framework" considering the startup's STAGE and INDUSTRY.
+    // 2. Construct System Prompt (Simplified for lighter model)
+    const stage = input.stage || 'Seed'
+    const industry = input.industry || 'Tech/SaaS'
+    const audience = input.targetAudience || 'Investors'
+    
+    const systemPrompt = `VC Analyst evaluating pitch. Stage: ${stage}, Industry: ${industry}, Audience: ${audience}. 
+Be skeptical and direct. Check for contradictions between transcript and slides.
 
-CONTEXT:
-- Startup Stage: ${input.stage || 'Unknown (Assume Seed)'}
-- Industry: ${input.industry || 'Unknown (Assume Tech/SaaS)'}
-- Target Audience: ${input.targetAudience || 'Investors'}
+6-Pillar Framework:
+1. Structure: Problem(15%), Solution(15%), Market(10%), Product(10%), BusinessModel(10%), Traction(10%), Team(5%), Ask(5%)
+2. Clarity: Jargon check, clarity test
+3. Logic: Gaps, contradictions
+4. Persuasion: Evidence, differentiation, urgency
+5. Audience Fit: Right fit?
+6. Score: A=Investable, B=Meeting, C=Keep in touch, D=Pass, F=Delete
 
-Your goal is to provide a HARD-HITTING, SKEPTICAL, and ACTIONABLE audit. 
-DO NOT be nice. Be accurate. If a Pre-Seed startup has no traction, that's fine, but if a Series A has no revenue, DESTROY existing score.
-
-INPUT: A pitch transcript and/or slide text.
-
-CRITICAL INSTRUCTION: 
-- CROSS-REFERENCE the audio transcript with slide text. If the speaker says "We have $1M ARR" but slides show "$500k", FLAG IT as a contradiction.
-- If the text is purely from a PDF (no audio), analyze the deck as a "Send-ahead Deck".
-
-YOU MUST OUTPUT JSON matching the schema below.
-LANGUAGE: All output MUST be in ENGLISH.
-
---- 6-PILLAR FRAMEWORK ---
-
-1. **Structure (Structure Quality)**
-   Evaluate based on ${input.stage || 'Seed'} expectations.
-   Weights: Problem(15%), Solution(15%), Market(10%), Product(10%), BusinessModel(10%), Traction(10%), Team(5%), Ask(5%).
-   
-2. **Clarity**
-   - Jargon/Buzzword check.
-   - "Grandma Test": Could a non-expert understand?
-
-3. **Logical Flow (Gaps & Contradictions)**
-   - **CROSS-CHECK**: Did the speaker contradict the slides? 
-   - Does the Ask match the Milestones?
-
-4. **Persuasiveness (Skeptic Mode)**
-   - Identify "Hand-waving" (claims without evidence).
-   - Differentiation: Is it a real moat or just a feature?
-
-5. **Audience Fit**
-   - Is this right for ${input.targetAudience}?
-
-6. **Final Score**
-   - Be STRICT. A=Investable now. B=Meeting worthy. C=Keep in touch. D=Pass. F=Auto-delete.
-
---- JSON OUTPUT SCHEMA ---
-
+Output JSON:
 {
   "overallScore": number,
-  "grade": "A+" | "A" | "B" | "C" | "D" | "F",
-  "summary": "Executive summary (English). Be direct.",
-  "strengths": ["Strength 1", "Strength 2"],
-  "weaknesses": ["Weakness 1", "Weakness 2"],
-  "risks": ["Major Risk 1 (e.g. Regulatory, Competition)", "Risk 2"],
-  "actionItems": ["Action 1: Fix slide 3...", "Action 2: Clarify GTM..."],
-  "assets": {
-    "elevatorPitch": "A punchy 30-second version of this pitch.",
-    "coldEmail": "A short, compelling cold email to an investor attaching this deck."
-  },
+  "grade": "A"|"B"|"C"|"D"|"F",
+  "summary": "Brief summary",
+  "strengths": ["..."],
+  "weaknesses": ["..."],
+  "risks": ["..."],
+  "actionItems": ["..."],
+  "assets": {"elevatorPitch": "...", "coldEmail": "..."},
   "pillars": {
-    "structure": {
-      "score": number,
-      "breakdown": {
-        "problem": { "present": boolean, "score": number, "feedback": "string" },
-        "solution": { "present": boolean, "score": number, "feedback": "..." },
-        "market": { "present": boolean, "score": number, "feedback": "..." },
-        "product": { "present": boolean, "score": number, "feedback": "..." },
-        "businessModel": { "present": boolean, "score": number, "feedback": "..." },
-        "traction": { "present": boolean, "score": number, "feedback": "..." },
-        "team": { "present": boolean, "score": number, "feedback": "..." },
-        "ask": { "present": boolean, "score": number, "feedback": "..." }
-      }
-    },
-    "clarity": {
-      "score": number,
-      "metrics": {
-        "averageSentenceLength": "Short/Medium/Long",
-        "buzzwordDensity": "Low/Medium/High",
-        "definitionCoverage": "Good/Fair/Poor"
-      },
-      "feedback": ["..."]
-    },
-    "logic": {
-      "flowScore": number,
-      "gaps": ["Gap 1"],
-      "contradictions": ["Contradiction 1 (e.g. Audio vs Slide mismatch)"]
-    },
-    "persuasion": {
-      "score": number,
-      "elements": {
-        "evidenceBased": number,
-        "differentiation": number,
-        "urgency": number,
-        "socialProof": number
-      }
-    },
-    "audience": {
-      "score": number,
-      "fitAnalysis": "...",
-      "investorReadiness": "Pre-Seed" | "Seed" | "Series A" | "Not Ready"
-    }
+    "structure": {"score": number, "breakdown": {"problem": {"present": bool, "score": number, "feedback": "..."}, "solution": {...}, "market": {...}, "product": {...}, "businessModel": {...}, "traction": {...}, "team": {...}, "ask": {...}}},
+    "clarity": {"score": number, "metrics": {"averageSentenceLength": "Short/Medium/Long", "buzzwordDensity": "Low/Medium/High", "definitionCoverage": "Good/Fair/Poor"}, "feedback": ["..."]},
+    "logic": {"flowScore": number, "gaps": ["..."], "contradictions": ["..."]},
+    "persuasion": {"score": number, "elements": {"evidenceBased": number, "differentiation": number, "urgency": number, "socialProof": number}},
+    "audience": {"score": number, "fitAnalysis": "...", "investorReadiness": "Pre-Seed"|"Seed"|"Series A"|"Not Ready"}
   },
-  "suggestedRewrite": "Improved elevator pitch paragraph",
-  "investorQuestions": ["Killer Question 1", "Killer Question 2"]
-}
-`
+  "suggestedRewrite": "...",
+  "investorQuestions": ["..."]
+}`
 
     // 3. Prepare Image Messages
     const conversationMessages: any[] = [
@@ -185,10 +114,10 @@ LANGUAGE: All output MUST be in ENGLISH.
     try {
       response = await withTimeout(
         openai.chat.completions.create({
-          model: 'gpt-4o', // or gpt-4-turbo
+          model: 'gpt-4o-mini', // Switched to lighter model
           messages: conversationMessages,
           response_format: { type: 'json_object' },
-          max_tokens: 3500,
+          max_tokens: 2500, // Reduced from 3500
           temperature: 0.5, // Lower temperature for more consistent scoring
           timeout: TIMEOUTS.OPENAI_ANALYSIS, // Set timeout
         } as any),

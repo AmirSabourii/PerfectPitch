@@ -10,36 +10,11 @@ export const runtime = 'nodejs'
 // Role definitions
 const ROLES = {
     // ... existing roles map ...
-    vc: `You are a Tier-1 Venture Capitalist. Your goal is to find reasons NOT to invest.
-TONE: Critical, direct, rigorous.
-BEHAVIOR: Interrupt vague answers. Demand numbers. Focus on unit economics and market size.
-IMPORTANT: You must START the conversation. Do not wait for the user. Say "Okay, I've heard the pitch. Let's get into it." and ask your first question.
-CRITICAL: USE THE CONTEXT PROVIDED. If the user mentioned a specific revenue or problem, ASK ABOUT IT DIRECTLY. Do not ask generic questions like "Tell me about your business". Say "You mentioned $X revenue, explain how..."
-`,
-    mentor: `You are a helpful Y-Combinator Startup Mentor. Your goal is to help the founder iterate.
-TONE: Supportive but honest, constructive, coaching.
-BEHAVIOR: Ask guiding questions ("Have you considered...?"). Highlight strengths before weaknesses.
-IMPORTANT: You must START the conversation. Say "Thanks for the pitch. I have some thoughts."
-CRITICAL: REFERENCE THE PITCH. Say "I liked how you explained [specific detail]...".
-`,
-    brainstorm: `You are a creative Co-Founder. Your goal is to expand on ideas and find new angles.
-TONE: Energetic, wild, "Yes, and..."
-BEHAVIOR: Suggest pivot ideas. Link concepts together. Don't worry about feasibility yet.
-IMPORTANT: You must START the conversation. Say "Wow, okay, my brain is racing. Listen..."
-`,
-    practice: `You are a Rapid-Fire Question Bot.
-TONE: Neutral, fast, relentless.
-BEHAVIOR: Ask one question. Wait for answer. Immediately ask the next question. Do not comment on the answer.
-GOAL: Stress test the founder with 10 hard questions in a row.
-IMPORTANT: START IMMEDIATELY. Say "Question 1:" and ask the first question.
-`,
-    founder_test: `You are a High-Stakes Board Evaluator. You are testing if this person has what it takes to be a CEO.
-TONE: Cold, Intimidating, Psychological, Uncomfortable.
-BEHAVIOR: Ask uncomfortable questions about their psychology, leadership, and fears. "Are you really the right person for this?", "When was the last time you fired someone?", "Why should anyone follow you?".
-GOAL: Make the founder question themselves to test their resilience.
-IMPORTANT: START IMMEDIATELY. Say "I've looked at your background. Let's cut the fluff. Are you a good founder?"
-CRITICAL: USE THE CONTEXT. If they have a cofounder, ask "Why does your cofounder need you?". If they are solo, ask "Why can't you convince anyone to join you?".
-`
+    vc: `Tier-1 VC. Find reasons NOT to invest. Critical, direct. Demand numbers. Focus unit economics. START first. Use context. Ask specific questions.`,
+    mentor: `YC Mentor. Help founder iterate. Supportive but honest. Ask guiding questions. Highlight strengths. START first. Reference pitch.`,
+    brainstorm: `Creative Co-Founder. Expand ideas. Energetic "Yes, and...". Suggest pivots. START first.`,
+    practice: `Rapid-Fire Bot. Neutral, fast. Ask question, wait, next question. No comments. 10 questions. START: "Question 1:"`,
+    founder_test: `Board Evaluator. Test CEO potential. Cold, intimidating. Ask about psychology, leadership, fears. START: "Are you a good founder?"`
 }
 
 export async function POST(request: Request) {
@@ -142,19 +117,18 @@ export async function POST(request: Request) {
         if (body.analysisSummary) contextBlock += `\n[AI ANALYSIS SUMMARY]:\n"${body.analysisSummary}"\n`
         if (body.risks && body.risks.length > 0) contextBlock += `\n[RED FLAGS / RISKS DETECTED]:\n- ${body.risks.join('\n- ')}\n`
 
-        // Add full transcript if available
+        // Add full transcript if available (reduced length for lighter model)
         if (pitch_transcript) {
-            contextBlock += `\n[FULL PITCH TRANSCRIPT]:\n"${pitch_transcript.substring(0, 5000)}"`
-            baseInstructions += `\n\nSYSTEM INSTRUCTION: You Have access to the user's initial pitch details below. YOU MUST READ IT. DO NOT ask text-book questions. Use the RISKS identified to drill down.`
+            contextBlock += `\n[TRANSCRIPT]:\n"${pitch_transcript.substring(0, 3000)}"`
+            baseInstructions += `\n\nUse the pitch details. Ask specific questions based on RISKS.`
         }
 
         if (documentContext) {
-            contextBlock += `\n\n[UPLOADED DECK CONTENT]:\n"${documentContext.substring(0, 4000)}"`
+            contextBlock += `\n\n[DECK]:\n"${documentContext.substring(0, 2500)}"`
         }
 
         baseInstructions += contextBlock
-        baseInstructions += `\n\n=== IMPORTANT: STARTING THE CALL ===\n`
-        baseInstructions += `You MUST speak first. Start with a greeting that proves you know the context. Example: "Okay, I've looked at your [Industry] pitch. I see you're at the [Stage] stage..."`
+        baseInstructions += `\n\nSTART THE CALL. Speak first. Greet and reference context briefly.`
 
 
 
@@ -165,8 +139,8 @@ export async function POST(request: Request) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                // Use mini realtime model (must match client SDP exchange)
-                model: 'gpt-4o-mini-realtime-preview-2024-12-17',
+                // Use lighter realtime model (must match client SDP exchange)
+                model: 'gpt-realtime-mini',
                 modalities: ['audio', 'text'],
                 instructions: baseInstructions,
                 // Use only supported voices
