@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, ReactNode } from 'react'
 import { DeepAnalysisResult, ContextData, View, Phase, InputMethod } from '@/lib/types'
+import { PerfectPitchAnalysis } from '@/lib/perfectPitchTypes'
 import { RoleType } from '@/components/RoleSelector'
 
 interface DashboardContextType {
@@ -12,7 +13,7 @@ interface DashboardContextType {
     isLoading: boolean
     error: string | null
     transcript: string
-    analysisResult: DeepAnalysisResult | null
+    analysisResult: DeepAnalysisResult | PerfectPitchAnalysis | null
     selectedRole: RoleType
     documentContext: string
     contextData: ContextData
@@ -24,7 +25,7 @@ interface DashboardContextType {
     setIsLoading: (loading: boolean) => void
     setError: (error: string | null) => void
     setTranscript: (text: string) => void
-    setAnalysisResult: (result: DeepAnalysisResult | null) => void
+    setAnalysisResult: (result: DeepAnalysisResult | PerfectPitchAnalysis | null) => void
     setSelectedRole: (role: RoleType) => void
     setDocumentContext: (context: string) => void
     setContextData: (data: ContextData) => void
@@ -42,7 +43,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [transcript, setTranscript] = useState<string>('')
-    const [analysisResult, setAnalysisResult] = useState<DeepAnalysisResult | null>(null)
+    const [analysisResult, setAnalysisResult] = useState<DeepAnalysisResult | PerfectPitchAnalysis | null>(null)
     const [selectedRole, setSelectedRole] = useState<RoleType>('vc')
     const [documentContext, setDocumentContext] = useState<string>('')
     const [contextData, setContextData] = useState<ContextData>({ stage: '', industry: '', targetAudience: 'VCs' })

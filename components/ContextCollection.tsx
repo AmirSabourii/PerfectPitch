@@ -4,44 +4,19 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowRight, Target, Briefcase, BarChart } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
 import { ContextData } from '@/lib/types'
+import { useDashboardCopy } from '@/hooks/useCopy'
 
 interface ContextCollectionProps {
     onComplete: (data: ContextData) => void
     onBack: () => void
 }
 
-const STAGES = [
-    { id: 'Idea', label: 'Idea Stage', desc: 'No product, just a concept.' },
-    { id: 'Pre-Seed', label: 'Pre-Seed', desc: 'MVP, early traction, <$10k MRR.' },
-    { id: 'Seed', label: 'Seed', desc: 'Product-market fit, growing, <$50k MRR.' },
-    { id: 'Series A', label: 'Series A', desc: 'Scaling, proven unit economics.' },
-]
-
-const INDUSTRIES = [
-    'SaaS / B2B',
-    'Consumer App',
-    'Fintech',
-    'HealthTech',
-    'E-commerce',
-    'Marketplace',
-    'Deep Tech / AI',
-    'Hardware',
-    'Other'
-]
-
-const AUDIENCES = [
-    { id: 'VCs', label: 'Venture Capitalists', desc: 'ROI & Exit focused.' },
-    { id: 'Angels', label: 'Angel Investors', desc: 'Team & Vision focused.' },
-    { id: 'Customers', label: 'Potential Customers', desc: 'Value & Problem focused.' },
-    { id: 'Partners', label: 'Strategic Partners', desc: 'Synergy focused.' },
-]
-
 export default function ContextCollection({ onComplete, onBack }: ContextCollectionProps) {
     const [stage, setStage] = useState('')
     const [industry, setIndustry] = useState('')
     const [targetAudience, setTargetAudience] = useState('VCs')
+    const { copy, isRTL } = useDashboardCopy()
 
     const isComplete = stage && industry && targetAudience
 
@@ -50,10 +25,11 @@ export default function ContextCollection({ onComplete, onBack }: ContextCollect
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="max-w-4xl mx-auto w-full"
+            dir={isRTL ? 'rtl' : 'ltr'}
         >
             <div className="text-center mb-10">
-                <h2 className="text-3xl font-medium text-white mb-3">Context Matters</h2>
-                <p className="text-zinc-400">Tell us about your startup so we can analyze it with the right lens.</p>
+                <h2 className="text-3xl font-medium text-white mb-3">{copy.context.heading}</h2>
+                <p className="text-zinc-400">{copy.context.subheading}</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -63,10 +39,10 @@ export default function ContextCollection({ onComplete, onBack }: ContextCollect
                     {/* Stage Section */}
                     <div className="space-y-4">
                         <h3 className="text-zinc-200 font-medium flex items-center gap-2">
-                            <BarChart className="w-4 h-4 text-white" /> Current Stage
+                            <BarChart className="w-4 h-4 text-white" /> {copy.context.stage}
                         </h3>
                         <div className="grid grid-cols-2 gap-3">
-                            {STAGES.map((s) => (
+                            {copy.context.stageOptions.map((s) => (
                                 <button
                                     key={s.id}
                                     onClick={() => setStage(s.id)}
@@ -87,10 +63,10 @@ export default function ContextCollection({ onComplete, onBack }: ContextCollect
                     {/* Audience Section */}
                     <div className="space-y-4">
                         <h3 className="text-zinc-200 font-medium flex items-center gap-2">
-                            <Target className="w-4 h-4 text-white" /> Who are you pitching to?
+                            <Target className="w-4 h-4 text-white" /> {copy.context.audience}
                         </h3>
                         <div className="grid grid-cols-2 gap-3">
-                            {AUDIENCES.map((a) => (
+                            {copy.context.audienceOptions.map((a) => (
                                 <button
                                     key={a.id}
                                     onClick={() => setTargetAudience(a.id)}
@@ -115,10 +91,10 @@ export default function ContextCollection({ onComplete, onBack }: ContextCollect
                     {/* Industry Section */}
                     <div className="space-y-4 flex-1">
                         <h3 className="text-zinc-200 font-medium flex items-center gap-2">
-                            <Briefcase className="w-4 h-4 text-white" /> Industry
+                            <Briefcase className="w-4 h-4 text-white" /> {copy.context.industry}
                         </h3>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {INDUSTRIES.map((ind) => (
+                            {copy.context.industries.map((ind) => (
                                 <button
                                     key={ind}
                                     onClick={() => setIndustry(ind)}
@@ -141,7 +117,7 @@ export default function ContextCollection({ onComplete, onBack }: ContextCollect
                             onClick={onBack}
                             className="text-sm text-zinc-500 hover:text-white transition-colors"
                         >
-                            Back
+                            {copy.context.back}
                         </button>
                         <button
                             onClick={() => isComplete && onComplete({ stage, industry, targetAudience })}
@@ -153,7 +129,7 @@ export default function ContextCollection({ onComplete, onBack }: ContextCollect
                                     : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
                             )}
                         >
-                            Start Analysis <ArrowRight className="w-4 h-4" />
+                            {copy.context.cta} <ArrowRight className={cn("w-4 h-4", isRTL && 'rotate-180')} />
                         </button>
                     </div>
                 </div>

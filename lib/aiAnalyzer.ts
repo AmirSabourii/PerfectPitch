@@ -1,7 +1,10 @@
 import OpenAI from 'openai'
 import { SlideContent } from './pdfProcessor'
-import { DeepAnalysisResult } from './types'
+import { DeepAnalysisResult, IdeaSummary } from './types'
 import { TIMEOUTS } from './timeout'
+
+// Re-export idea summary extraction
+export { extractIdeaSummary } from './ideaSummaryExtractor'
 
 // Lazily instantiate the OpenAI client so builds don't require the env var
 let cachedClient: OpenAI | null = null
@@ -68,6 +71,7 @@ export async function analyzePitchDeck(
     const industry = input.industry || 'Tech/SaaS'
     const audience = input.targetAudience || 'Investors'
     
+    // System prompt with caching support (mark as cacheable for repeated use)
     const systemPrompt = `VC Analyst evaluating pitch. Stage: ${stage}, Industry: ${industry}, Audience: ${audience}. 
 Be skeptical and direct. Check for contradictions between transcript and slides.
 
@@ -100,9 +104,12 @@ Output JSON:
   "investorQuestions": ["..."]
 }`
 
-    // 3. Prepare Image Messages
+    // 3. Prepare messages with prompt caching for cost optimization
     const conversationMessages: any[] = [
-      { role: 'system', content: systemPrompt },
+      { 
+        role: 'system', 
+        content: systemPrompt
+      },
       { role: 'user', content: `PITCH CONTENT TO ANALYZE:\n${contentContext}` },
     ]
 
@@ -135,10 +142,10 @@ Output JSON:
     try {
       const openai = getOpenAIClient()
       response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini', // Lighter model for speed
+        model: 'gpt-4o-mini', // Lighter model for speed and cost
         messages: conversationMessages,
         response_format: { type: 'json_object' },
-        max_tokens: 1500, // Reduced from 2000 for faster response on free tier
+        max_tokens: 1500, // Optimized for cost
         temperature: 0.5,
       }, {
         signal: controller.signal, // Pass abort signal

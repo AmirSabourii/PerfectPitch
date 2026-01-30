@@ -1,0 +1,42 @@
+// Firestore Security Rules for Credit System
+// این قوانین را به فایل firestore.rules خود اضافه کنید
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // User Credits Collection
+    match /userCredits/{userId} {
+      // فقط کاربر خودش می‌تواند credit خود را ببیند
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // فقط سرور می‌تواند credit را تغییر دهد (از طریق Admin SDK)
+      allow write: if false;
+    }
+    
+    // Credit Purchases Collection
+    match /creditPurchases/{purchaseId} {
+      // فقط کاربر خودش می‌تواند خریدهای خود را ببیند
+      allow read: if request.auth != null && 
+                     request.auth.uid == resource.data.userId;
+      
+      // فقط سرور می‌تواند خرید ثبت کند
+      allow write: if false;
+    }
+    
+    // Credit Usage Collection
+    match /creditUsage/{usageId} {
+      // فقط کاربر خودش می‌تواند استفاده‌های خود را ببیند
+      allow read: if request.auth != null && 
+                     request.auth.uid == resource.data.userId;
+      
+      // فقط سرور می‌تواند استفاده ثبت کند
+      allow write: if false;
+    }
+  }
+}
+
+// نکات مهم:
+// 1. تمام نوشتن‌ها باید از طریق API endpoints انجام شود
+// 2. کلاینت فقط می‌تواند داده‌های خود را بخواند
+// 3. برای امنیت بیشتر، از Admin SDK در سمت سرور استفاده کنید

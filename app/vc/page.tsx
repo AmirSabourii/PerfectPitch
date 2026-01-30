@@ -612,7 +612,7 @@ export default function VCLandingPage() {
                         </div>
                     </div>
                     <div className="mt-8 pt-8 border-t border-white/5 text-center text-zinc-600 text-sm">
-                        © 2024 PerfectPitch Inc. All rights reserved.
+                        © 2026 PerfectPitch Inc. All rights reserved.
                     </div>
                 </div>
             </footer>

@@ -26,45 +26,18 @@ type TimeoutConfig = {
   FIREBASE_OPERATION: number
 }
 
-const TIMEOUT_PRESETS: Record<string, TimeoutConfig> = {
-  /**
-   * Original 10s-limited configuration for Netlify free tier
-   */
-  netlify: {
-    OPENAI_TRANSCRIBE: 7000,
-    OPENAI_CHAT: 7000,
-    OPENAI_ANALYSIS: 7000,
-    OPENAI_REALTIME_SESSION: 5000,
-    PDF_PARSE: 7000,
-    FIREBASE_OPERATION: 3000,
-  },
-  /**
-   * Railway/General server preset with higher limits
-   */
-  railway: {
-    OPENAI_TRANSCRIBE: 60000,
-    OPENAI_CHAT: 45000,
-    OPENAI_ANALYSIS: 60000,
-    OPENAI_REALTIME_SESSION: 45000,
-    PDF_PARSE: 45000,
-    FIREBASE_OPERATION: 10000,
-  },
+// Unlimited timeouts - no artificial constraints
+const UNLIMITED_CONFIG: TimeoutConfig = {
+  OPENAI_TRANSCRIBE: 600000, // 10 minutes
+  OPENAI_CHAT: 600000, // 10 minutes
+  OPENAI_ANALYSIS: 600000, // 10 minutes - enough for complex analysis
+  OPENAI_REALTIME_SESSION: 300000, // 5 minutes
+  PDF_PARSE: 300000, // 5 minutes
+  FIREBASE_OPERATION: 60000, // 1 minute
 }
 
-const resolvePreset = () => {
-  const explicit = process.env.TIMEOUT_PRESET?.toLowerCase()
-  if (explicit && TIMEOUT_PRESETS[explicit]) {
-    return explicit
-  }
-  if (process.env.RAILWAY_ENVIRONMENT) {
-    return 'railway'
-  }
-  return 'netlify'
-}
+export const TIMEOUTS = UNLIMITED_CONFIG
 
-export const TIMEOUTS = TIMEOUT_PRESETS[resolvePreset()]
-
-// Maximum content length to prevent timeout (in characters)
-// Reduced aggressively for Netlify's 10-second FREE TIER limit
-export const MAX_CONTENT_LENGTH = 8000 // ~8k chars to stay within Netlify free tier timeout
+// No content length restrictions - let OpenAI handle it
+export const MAX_CONTENT_LENGTH = 100000 // 100k chars - reasonable limit for token constraints
 

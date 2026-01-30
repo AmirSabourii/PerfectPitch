@@ -4,7 +4,7 @@ import { withTimeout, TIMEOUTS } from '@/lib/timeout'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 120 // 2 minutes for PDF parsing
+export const maxDuration = 300 // 5 minutes for PDF parsing
 
 export async function POST(request: Request) {
     let fileSize = 0
@@ -18,13 +18,14 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
         }
 
-        // Validate file size (max 10MB for PDF parsing)
+        // Get file info
         fileSize = file.size || 0
         fileName = file.name || 'unknown'
         
-        if (fileSize > 10 * 1024 * 1024) {
+        // Validate file size (max 100MB for PDF parsing)
+        if (fileSize > 100 * 1024 * 1024) {
             return NextResponse.json(
-                { error: 'File too large. Maximum size is 10MB.' },
+                { error: 'File too large. Maximum size is 100MB.' },
                 { status: 400 }
             )
         }

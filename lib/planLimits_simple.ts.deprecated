@@ -1,0 +1,75 @@
+// Plan Limits - نسخه ساده
+export type PlanType = 'free' | 'pro' | 'organization'
+
+export interface PlanLimits {
+  pitchAnalysisPerMonth: number
+  realtimeSessionsPerMonth: number
+  maxRealtimeSessionDuration: number // seconds
+  hasAdminPanel: boolean
+  hasDedicatedDatabase: boolean
+}
+
+export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
+  free: {
+    pitchAnalysisPerMonth: 1, // فقط یکبار
+    realtimeSessionsPerMonth: 0,
+    maxRealtimeSessionDuration: 0,
+    hasAdminPanel: false,
+    hasDedicatedDatabase: false,
+  },
+  
+  pro: {
+    pitchAnalysisPerMonth: 20,
+    realtimeSessionsPerMonth: 5, // یا 2 اگر قیمت $15 باشه
+    maxRealtimeSessionDuration: 300, // 5 minutes
+    hasAdminPanel: false,
+    hasDedicatedDatabase: false,
+  },
+  
+  organization: {
+    pitchAnalysisPerMonth: 20, // per user
+    realtimeSessionsPerMonth: 5, // per user
+    maxRealtimeSessionDuration: 300, // 5 minutes
+    hasAdminPanel: true, // فقط این فرق داره
+    hasDedicatedDatabase: true, // و این
+  },
+}
+
+export const PLAN_PRICING: Record<PlanType, number> = {
+  free: 0,
+  pro: 29, // یا 15 با 2 realtime
+  organization: 25, // per user
+}
+
+// محاسبه هزینه واقعی
+export function calculateCost(
+  analysisCount: number,
+  realtimeCount: number
+): number {
+  const analysisCost = analysisCount * 0.00165
+  const transcriptionCost = analysisCount * 0.75 * 0.024 // فرض: 75% با transcription
+  const realtimeCost = realtimeCount * 4.50
+  const infrastructure = 0.80
+  
+  return analysisCost + transcriptionCost + realtimeCost + infrastructure
+}
+
+// محاسبه سود
+export function calculateProfit(
+  plan: PlanType,
+  usagePercent: number = 100
+): { cost: number; revenue: number; profit: number; margin: number } {
+  const limits = PLAN_LIMITS[plan]
+  const usage = usagePercent / 100
+  
+  const cost = calculateCost(
+    limits.pitchAnalysisPerMonth * usage,
+    limits.realtimeSessionsPerMonth * usage
+  )
+  
+  const revenue = PLAN_PRICING[plan]
+  const profit = revenue - cost
+  const margin = revenue > 0 ? (profit / revenue) * 100 : 0
+  
+  return { cost, revenue, profit, margin }
+}

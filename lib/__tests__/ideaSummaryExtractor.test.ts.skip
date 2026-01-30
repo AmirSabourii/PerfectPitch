@@ -1,0 +1,100 @@
+import fc from 'fast-check'
+import { IdeaSummary } from '../types'
+
+/**
+ * Property-Based Tests for Deep Research Analysis
+ * Feature: deep-research-analysis
+ */
+
+describe('Deep Research Analysis - Property Tests', () => {
+  /**
+   * Property 1: Idea Summary Structure Completeness
+   * Validates: Requirements 1.2
+   * 
+   * For any valid pitch deck content, when processed by the Initial_Analyzer,
+   * the resulting IdeaSummary must contain all required fields with non-empty values.
+   */
+  test('Property 1: Idea Summary Structure Completeness', () => {
+    // Generator for IdeaSummary objects
+    const ideaSummaryGenerator = fc.record({
+      summary: fc.string({ minLength: 1, maxLength: 500 }),
+      problemStatement: fc.string({ minLength: 1, maxLength: 500 }),
+      solutionStatement: fc.string({ minLength: 1, maxLength: 500 }),
+      targetMarket: fc.string({ minLength: 1, maxLength: 300 }),
+      keyDifferentiator: fc.string({ minLength: 1, maxLength: 300 }),
+    })
+
+    fc.assert(
+      fc.property(ideaSummaryGenerator, (ideaSummary: IdeaSummary) => {
+        // Verify all required fields are present
+        expect(ideaSummary).toHaveProperty('summary')
+        expect(ideaSummary).toHaveProperty('problemStatement')
+        expect(ideaSummary).toHaveProperty('solutionStatement')
+        expect(ideaSummary).toHaveProperty('targetMarket')
+        expect(ideaSummary).toHaveProperty('keyDifferentiator')
+
+        // Verify all fields have non-empty values
+        expect(ideaSummary.summary).toBeTruthy()
+        expect(ideaSummary.summary.trim().length).toBeGreaterThan(0)
+        
+        expect(ideaSummary.problemStatement).toBeTruthy()
+        expect(ideaSummary.problemStatement.trim().length).toBeGreaterThan(0)
+        
+        expect(ideaSummary.solutionStatement).toBeTruthy()
+        expect(ideaSummary.solutionStatement.trim().length).toBeGreaterThan(0)
+        
+        expect(ideaSummary.targetMarket).toBeTruthy()
+        expect(ideaSummary.targetMarket.trim().length).toBeGreaterThan(0)
+        
+        expect(ideaSummary.keyDifferentiator).toBeTruthy()
+        expect(ideaSummary.keyDifferentiator.trim().length).toBeGreaterThan(0)
+
+        // Verify types are correct
+        expect(typeof ideaSummary.summary).toBe('string')
+        expect(typeof ideaSummary.problemStatement).toBe('string')
+        expect(typeof ideaSummary.solutionStatement).toBe('string')
+        expect(typeof ideaSummary.targetMarket).toBe('string')
+        expect(typeof ideaSummary.keyDifferentiator).toBe('string')
+      }),
+      { numRuns: 100 }
+    )
+  })
+})
+
+  /**
+   * Property 2: Idea Summary Length Constraint
+   * Validates: Requirements 1.3
+   * 
+   * For any generated IdeaSummary, the summary field must contain between 3 and 5 lines
+   * (counting by newline characters).
+   */
+  test('Property 2: Idea Summary Length Constraint', () => {
+    // Generator for IdeaSummary with controlled line count in summary
+    const ideaSummaryWithLinesGenerator = fc.record({
+      summary: fc.array(fc.string({ minLength: 10, maxLength: 100 }), { minLength: 3, maxLength: 5 })
+        .map(lines => lines.join('\n')),
+      problemStatement: fc.string({ minLength: 1, maxLength: 500 }),
+      solutionStatement: fc.string({ minLength: 1, maxLength: 500 }),
+      targetMarket: fc.string({ minLength: 1, maxLength: 300 }),
+      keyDifferentiator: fc.string({ minLength: 1, maxLength: 300 }),
+    })
+
+    fc.assert(
+      fc.property(ideaSummaryWithLinesGenerator, (ideaSummary: IdeaSummary) => {
+        // Count lines in summary (split by newline)
+        const lines = ideaSummary.summary.split('\n')
+        const lineCount = lines.length
+
+        // Verify line count is between 3 and 5
+        expect(lineCount).toBeGreaterThanOrEqual(3)
+        expect(lineCount).toBeLessThanOrEqual(5)
+
+        // Verify each line has content (not just whitespace)
+        lines.forEach(line => {
+          expect(line.trim().length).toBeGreaterThan(0)
+        })
+      }),
+      { numRuns: 100 }
+    )
+  })
+})

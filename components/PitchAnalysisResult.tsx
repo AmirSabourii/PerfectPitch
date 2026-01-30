@@ -3,14 +3,124 @@
 import { useState } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, RotateCcw, BarChart3, Lightbulb, Target, MessageSquare, Menu, FileText, CheckCircle2, AlertCircle, AlertTriangle, CheckSquare, Mail, Copy, Check, Download } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { 
+  ArrowRight, RotateCcw, BarChart3, Lightbulb, Target, MessageSquare, 
+  CheckCircle2, AlertCircle, AlertTriangle, CheckSquare, TrendingUp, 
+  Users, Zap, Shield, Download, Copy
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-import { DeepAnalysisResult } from '@/lib/types'
+// Perfect Pitch Analysis Structure
+interface PerfectPitchAnalysis {
+  stage1?: {
+    startupReconstruction?: {
+      problem?: string
+      solution?: string
+      customer?: string
+      market?: string
+      businessModel?: string
+    }
+    ideaQuality?: {
+      score?: number
+      reasoning?: string
+      fundamentalStrength?: string
+    }
+    pitchQuality?: {
+      score?: number
+      reasoning?: string
+      presentationEffectiveness?: string
+    }
+    investorSignals?: {
+      positive?: string[]
+      negative?: string[]
+      critical?: string[]
+    }
+    patternMatching?: {
+      similarSuccesses?: string[]
+      similarFailures?: string[]
+      uniqueAspects?: string[]
+    }
+    investmentReadiness?: {
+      stage?: string
+      readiness?: string
+      gapToFundable?: string
+    }
+    rawVerdict?: {
+      decision?: string
+      confidence?: number
+      keyReason?: string
+    }
+  }
+  stage2?: {
+    scorecard?: Record<string, { score?: number; reasoning?: string }>
+    gapDiagnosis?: {
+      biggestGap?: string
+      fastestWin?: string
+      dangerousIllusions?: string
+    }
+    prioritizedChecklist?: {
+      high?: string[]
+      medium?: string[]
+      low?: string[]
+    }
+    decisionLogic?: {
+      decision?: string
+      reasoning?: string
+      conditions?: string
+    }
+    improvementPotential?: {
+      current?: number
+      target?: number
+      ceiling?: number
+      confidence?: string
+    }
+  }
+  stage3?: {
+    consistency_test?: {
+      score?: number
+      critical_issue?: string
+    }
+    assumption_stress_test?: {
+      score?: number
+      fatal_dependency?: string
+    }
+    objection_coverage_test?: {
+      score?: number
+      missed_high_impact_item?: string
+    }
+    clarity_under_pressure_test?: {
+      score?: number
+      '30s_takeaway'?: string
+    }
+    market_believability_test?: {
+      score?: number
+      unconvincing_claim?: string
+    }
+    story_coherence_test?: {
+      score?: number
+      flow_break_point?: string
+    }
+    final_readiness_scoring?: {
+      overall_readiness?: number
+      readiness_band?: string
+      critical_issue_penalties?: boolean
+    }
+    investor_gate_verdict?: {
+      pass_human_review?: boolean
+      confidence_level?: string
+      main_blocking_reason?: string
+    }
+  }
+  metadata?: {
+    analyzedAt?: string
+    pitchDeckLength?: number
+    processingTimeMs?: number
+  }
+}
 
 interface PitchAnalysisResultProps {
-  analysis: DeepAnalysisResult
+  analysis: PerfectPitchAnalysis
   transcript: string
   documentContext?: string
   onStartQnA: () => void
@@ -24,177 +134,25 @@ export default function PitchAnalysisResult({
   onStartQnA,
   onReset,
 }: PitchAnalysisResultProps) {
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('stage1')
 
-  // Helper to safely access analysis data structure
-  const pillars = analysis.pillars || {}
-  const structure = pillars.structure || {}
-  const clarity = pillars.clarity || {}
-  const logic = pillars.logic || {}
-  const persuasion = pillars.persuasion || {}
-  const audience = pillars.audience || {}
+  // Debug: Log the analysis structure
+  console.log('PitchAnalysisResult received analysis:', JSON.stringify(analysis, null, 2))
 
   const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'structure', label: 'Structure' },
-    { id: 'content', label: 'Content' },
-    { id: 'persuasion', label: 'Persuasion' },
-    { id: 'action_plan', label: 'Action Plan' },
-    { id: 'assets', label: 'Assets' }
+    { id: 'stage1', label: 'Stage 1' },
+    { id: 'stage2', label: 'Stage 2' },
+    { id: 'stage3', label: 'Stage 3' },
+    { id: 'metadata', label: 'Metadata' }
   ]
 
-  const handleDownloadDoc = () => {
-    // Generate text content from analysis
-    const content = generateDocContent()
-    
-    // Create blob and download
-    const blob = new Blob([content], { type: 'application/msword' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `pitch-analysis-${new Date().toISOString().split('T')[0]}.doc`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
-
-  const generateDocContent = () => {
-    const lines: string[] = []
-    
-    lines.push('PITCH ANALYSIS REPORT')
-    lines.push('=' .repeat(50))
-    lines.push(`Date: ${new Date().toLocaleDateString()}`)
-    lines.push('')
-    
-    // Overview
-    lines.push('OVERVIEW')
-    lines.push('-'.repeat(30))
-    lines.push(`Overall Score: ${analysis.overallScore || 0}/100`)
-    lines.push(`Grade: ${analysis.grade || 'N/A'}`)
-    lines.push('')
-    lines.push('Executive Summary:')
-    lines.push(analysis.summary || 'Analysis not available.')
-    lines.push('')
-    
-    // Strengths & Weaknesses
-    if (analysis.strengths && analysis.strengths.length > 0) {
-      lines.push('STRENGTHS')
-      lines.push('-'.repeat(30))
-      analysis.strengths.forEach((s, i) => lines.push(`${i + 1}. ${s}`))
-      lines.push('')
-    }
-    
-    if (analysis.weaknesses && analysis.weaknesses.length > 0) {
-      lines.push('WEAKNESSES')
-      lines.push('-'.repeat(30))
-      analysis.weaknesses.forEach((w, i) => lines.push(`${i + 1}. ${w}`))
-      lines.push('')
-    }
-    
-    // Structure
-    if (structure.score) {
-      lines.push('STRUCTURE BREAKDOWN')
-      lines.push('-'.repeat(30))
-      lines.push(`Section Score: ${structure.score}%`)
-      lines.push('')
-      Object.entries((structure.breakdown || {}) as Record<string, any>).forEach(([key, data]) => {
-        const label = key.replace(/([A-Z])/g, ' $1').trim()
-        lines.push(`${label}: ${data.score}/100 ${data.present ? '✓' : '✗'}`)
-        lines.push(`  ${data.feedback}`)
-      })
-      lines.push('')
-    }
-    
-    // Clarity
-    if (clarity.score) {
-      lines.push('CLARITY')
-      lines.push('-'.repeat(30))
-      lines.push(`Score: ${clarity.score}%`)
-      if (clarity.metrics) {
-        lines.push(`Jargon Density: ${clarity.metrics.buzzwordDensity || 'N/A'}`)
-        lines.push(`Avg Sentence Length: ${clarity.metrics.averageSentenceLength || 'N/A'}`)
-      }
-      if (clarity.feedback && clarity.feedback.length > 0) {
-        lines.push('Feedback:')
-        clarity.feedback.forEach(f => lines.push(`  - ${f}`))
-      }
-      lines.push('')
-    }
-    
-    // Logic
-    if (logic.flowScore) {
-      lines.push('LOGIC FLOW')
-      lines.push('-'.repeat(30))
-      lines.push(`Flow Score: ${logic.flowScore}%`)
-      if (logic.gaps && logic.gaps.length > 0) {
-        lines.push('Gaps:')
-        logic.gaps.forEach(g => lines.push(`  - ${g}`))
-      }
-      lines.push('')
-    }
-    
-    // Persuasion
-    if (persuasion.elements) {
-      lines.push('PERSUASION DRIVERS')
-      lines.push('-'.repeat(30))
-      lines.push(`Evidence Based: ${persuasion.elements.evidenceBased}/100`)
-      lines.push(`Differentiation: ${persuasion.elements.differentiation}/100`)
-      lines.push(`Urgency: ${persuasion.elements.urgency}/100`)
-      lines.push(`Social Proof: ${persuasion.elements.socialProof}/100`)
-      lines.push('')
-    }
-    
-    // Risks
-    if (analysis.risks && analysis.risks.length > 0) {
-      lines.push('INVESTOR RED FLAGS')
-      lines.push('-'.repeat(30))
-      analysis.risks.forEach((r, i) => lines.push(`${i + 1}. ${r}`))
-      lines.push('')
-    }
-    
-    // Action Items
-    if (analysis.actionItems && analysis.actionItems.length > 0) {
-      lines.push('ACTION ITEMS')
-      lines.push('-'.repeat(30))
-      analysis.actionItems.forEach((item, i) => lines.push(`${i + 1}. ${item}`))
-      lines.push('')
-    }
-    
-    // Investor Questions
-    if (analysis.investorQuestions && analysis.investorQuestions.length > 0) {
-      lines.push('RECOMMENDED PREP QUESTIONS')
-      lines.push('-'.repeat(30))
-      analysis.investorQuestions.forEach((q, i) => lines.push(`${i + 1}. ${q}`))
-      lines.push('')
-    }
-    
-    // Assets
-    if (analysis.assets) {
-      if (analysis.assets.elevatorPitch) {
-        lines.push('30-SECOND ELEVATOR PITCH')
-        lines.push('-'.repeat(30))
-        lines.push(analysis.assets.elevatorPitch)
-        lines.push('')
-      }
-      
-      if (analysis.assets.coldEmail) {
-        lines.push('INVESTOR COLD EMAIL')
-        lines.push('-'.repeat(30))
-        lines.push(analysis.assets.coldEmail)
-        lines.push('')
-      }
-    }
-    
-    // Transcript
-    if (transcript) {
-      lines.push('TRANSCRIPT')
-      lines.push('-'.repeat(30))
-      lines.push(transcript)
-      lines.push('')
-    }
-    
-    return lines.join('\n')
+  // Helper function to safely display values
+  const display = (value: any): string => {
+    if (value === null || value === undefined) return '-'
+    if (typeof value === 'string') return value || '-'
+    if (typeof value === 'number') return value.toString()
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+    return '-'
   }
 
   return (
@@ -207,8 +165,10 @@ export default function PitchAnalysisResult({
             <BarChart3 className="w-4 h-4 text-indigo-400" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-white tracking-tight">Analysis Report</h2>
-            <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">{new Date().toLocaleDateString()}</p>
+            <h2 className="text-sm font-semibold text-white tracking-tight">Perfect Pitch Analysis</h2>
+            <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-wider">
+              {analysis.metadata?.analyzedAt ? new Date(analysis.metadata.analyzedAt).toLocaleDateString() : '-'}
+            </p>
           </div>
         </div>
 
@@ -232,22 +192,12 @@ export default function PitchAnalysisResult({
 
         <div className="flex items-center gap-2">
           <button
-            onClick={handleDownloadDoc}
-            className="p-2 text-zinc-500 hover:text-white transition-colors print:hidden"
-            title="Download Report"
-          >
-            <Download className="w-4 h-4" />
-          </button>
-          <button
             onClick={onReset}
-            className="p-2 text-zinc-500 hover:text-white transition-colors print:hidden"
+            className="p-2 text-zinc-500 hover:text-white transition-colors"
             title="Reset Analysis"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
-          <Button onClick={onStartQnA} size="sm" className="bg-white text-black hover:bg-zinc-200 border-none text-xs font-semibold px-4 rounded-full">
-            Start Roleplay <ArrowRight className="w-3 h-3 ml-2" />
-          </Button>
         </div>
       </div>
 
@@ -255,300 +205,518 @@ export default function PitchAnalysisResult({
       <div className="flex-1 overflow-y-auto relative scrollbar-hide">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/10 via-zinc-950/0 to-zinc-950/0 pointer-events-none" />
 
-        <div className="p-8 max-w-5xl mx-auto space-y-12 pb-24">
+        <div className="p-8 max-w-6xl mx-auto space-y-8 pb-24">
 
-          {/* OVERVIEW TAB */}
-          {activeTab === 'overview' && (
+          {/* STAGE 1 TAB */}
+          {activeTab === 'stage1' && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-
-              {/* Hero Score Section */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-                <div className="col-span-12 md:col-span-4 flex flex-col justify-center">
-                  <div className="relative aspect-square flex items-center justify-center">
-                    {/* Decorative Rings */}
-                    <div className="absolute inset-0 border border-white/5 rounded-full" />
-                    <div className="absolute inset-4 border border-white/5 rounded-full border-dashed animate-[spin_60s_linear_infinite]" />
-                    <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-transparent rounded-full blur-2xl" />
-
-                    <div className="text-center relative z-10">
-                      <span className="text-8xl font-light text-white tracking-tighter block leading-none">
-                        {analysis.overallScore || 0}
-                      </span>
-                      <span className="text-sm text-zinc-500 font-medium uppercase tracking-widest mt-2 block">
-                        Score
-                      </span>
-                    </div>
-
-                    {/* Grade Badge */}
-                    <div className="absolute top-0 right-0">
-                      <div className="glass-panel px-3 py-1 rounded-full border border-white/10 bg-white/5 text-white font-mono text-sm">
-                        Grade {analysis.grade || 'N/A'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-span-12 md:col-span-8 flex flex-col justify-center space-y-6">
-                  <div>
-                    <h3 className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-3">Executive Summary</h3>
-                    <p className="text-xl text-zinc-200 font-light leading-relaxed">
-                      {analysis.summary || "Analysis not available."}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                      <h4 className="flex items-center gap-2 text-white text-xs font-bold uppercase mb-2">
-                        <CheckCircle2 className="w-4 h-4" /> Strength
-                      </h4>
-                      <p className="text-sm text-zinc-300">{(analysis.strengths && analysis.strengths[0]) || "N/A"}</p>
-                    </div>
-                    <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                      <h4 className="flex items-center gap-2 text-white text-xs font-bold uppercase mb-2">
-                        <AlertCircle className="w-4 h-4" /> Weakness
-                      </h4>
-                      <p className="text-sm text-zinc-300">{(analysis.weaknesses && analysis.weaknesses[0]) || "N/A"}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Investor Questions */}
-              <div className="space-y-4 pt-8 border-t border-white/5">
-                <h3 className="text-zinc-500 text-xs font-bold uppercase tracking-widest">Recommended Prep Questions</h3>
+              
+              {/* Startup Reconstruction */}
+              <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
+                <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                  <Target className="w-4 h-4" /> Startup Reconstruction
+                </h3>
                 <div className="grid md:grid-cols-2 gap-4">
-                  {(analysis.investorQuestions || []).map((q: string, i: number) => (
-                    <div key={i} className="p-5 rounded-2xl bg-zinc-900/50 border border-white/5 hover:border-white/10 transition-colors">
-                      <p className="text-sm text-zinc-300 leading-snug">{q}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* STRUCTURE TAB */}
-          {activeTab === 'structure' && (
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6">
-              <div className="flex items-end justify-between border-b border-white/5 pb-6">
-                <div>
-                  <h3 className="text-2xl font-light text-white">Structure Breakdown</h3>
-                  <p className="text-zinc-500 text-sm mt-1">Foundational elements check</p>
-                </div>
-                <div className="text-right">
-                  <div className="text-3xl font-light text-white">{structure.score}%</div>
-                  <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Section Score</div>
-                </div>
-              </div>
-
-              <div className="grid gap-3">
-                {Object.entries((structure.breakdown || {}) as Record<string, any>).map(([key, data], i) => (
-                  <div key={key} className="group p-5 rounded-2xl bg-zinc-900/40 border border-white/5 hover:bg-zinc-900/60 transition-all flex items-start gap-4">
-                    <div className={cn("mt-1 w-2 h-2 rounded-full shrink-0", data.present ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" : "bg-zinc-700")} />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-sm font-medium text-white capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</h4>
-                        <span className="text-xs font-mono text-zinc-500">{data.score}/100</span>
-                      </div>
-                      <p className="text-xs text-zinc-400 leading-relaxed">{data.feedback}</p>
-                    </div>
+                  <div className="p-4 rounded-xl bg-black/20 border border-white/5">
+                    <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Problem</h4>
+                    <p className="text-sm text-zinc-300">{display(analysis.stage1?.startupReconstruction?.problem)}</p>
                   </div>
-                ))}
+                  <div className="p-4 rounded-xl bg-black/20 border border-white/5">
+                    <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Solution</h4>
+                    <p className="text-sm text-zinc-300">{display(analysis.stage1?.startupReconstruction?.solution)}</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-black/20 border border-white/5">
+                    <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Customer</h4>
+                    <p className="text-sm text-zinc-300">{display(analysis.stage1?.startupReconstruction?.customer)}</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-black/20 border border-white/5">
+                    <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Market</h4>
+                    <p className="text-sm text-zinc-300">{display(analysis.stage1?.startupReconstruction?.market)}</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-black/20 border border-white/5 md:col-span-2">
+                    <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Business Model</h4>
+                    <p className="text-sm text-zinc-300">{display(analysis.stage1?.startupReconstruction?.businessModel)}</p>
+                  </div>
+                </div>
               </div>
-            </motion.div>
-          )}
 
-          {/* CONTENT TAB */}
-          {activeTab === 'content' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid md:grid-cols-2 gap-8">
-              {/* Clarity Column */}
-              <div className="space-y-6">
+              {/* Idea & Pitch Quality */}
+              <div className="grid md:grid-cols-2 gap-6">
                 <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-medium text-white flex items-center gap-2">
-                      <Lightbulb className="w-4 h-4 text-amber-300" /> Clarity
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                      <Lightbulb className="w-4 h-4" /> Idea Quality
                     </h3>
-                    <span className="text-2xl font-light text-white">{clarity.score}%</span>
+                    <span className="text-3xl font-light text-white">{display(analysis.stage1?.ideaQuality?.score)}</span>
                   </div>
-
-                  <div className="space-y-4">
-                    <div className="flex justify-between text-sm py-2 border-b border-white/5">
-                      <span className="text-zinc-500">Jargon Density</span>
-                      <span className="text-white font-mono">{clarity.metrics?.buzzwordDensity || 'Low'}</span>
+                  <div className="space-y-3">
+                    <div>
+                      <h4 className="text-xs font-bold text-zinc-500 uppercase mb-1">Reasoning</h4>
+                      <p className="text-sm text-zinc-300">{display(analysis.stage1?.ideaQuality?.reasoning)}</p>
                     </div>
-                    <div className="flex justify-between text-sm py-2 border-b border-white/5">
-                      <span className="text-zinc-500">Avg Sentence Length</span>
-                      <span className="text-white font-mono">{clarity.metrics?.averageSentenceLength || 'Optimal'}</span>
+                    <div>
+                      <h4 className="text-xs font-bold text-zinc-500 uppercase mb-1">Fundamental Strength</h4>
+                      <p className="text-sm text-zinc-300">{display(analysis.stage1?.ideaQuality?.fundamentalStrength)}</p>
                     </div>
                   </div>
+                </div>
 
-                  <div className="mt-6 pt-6 border-t border-white/5">
-                    <h4 className="text-xs font-bold text-zinc-500 uppercase mb-3">Feedback</h4>
+                <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4" /> Pitch Quality
+                    </h3>
+                    <span className="text-3xl font-light text-white">{display(analysis.stage1?.pitchQuality?.score)}</span>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <h4 className="text-xs font-bold text-zinc-500 uppercase mb-1">Reasoning</h4>
+                      <p className="text-sm text-zinc-300">{display(analysis.stage1?.pitchQuality?.reasoning)}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-zinc-500 uppercase mb-1">Presentation Effectiveness</h4>
+                      <p className="text-sm text-zinc-300">{display(analysis.stage1?.pitchQuality?.presentationEffectiveness)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Investor Signals */}
+              <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
+                <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" /> Investor Signals
+                </h3>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
+                    <h4 className="text-xs font-bold text-emerald-400 uppercase mb-3 flex items-center gap-2">
+                      <CheckCircle2 className="w-3 h-3" /> Positive
+                    </h4>
                     <ul className="space-y-2">
-                      {(clarity.feedback || []).map((f: string, i: number) => (
-                        <li key={i} className="text-xs text-zinc-400 pl-3 border-l border-zinc-700">{f}</li>
+                      {(analysis.stage1?.investorSignals?.positive || []).map((item, i) => (
+                        <li key={i} className="text-xs text-zinc-300 pl-3 border-l border-emerald-500/30">{item}</li>
                       ))}
+                      {(!analysis.stage1?.investorSignals?.positive || analysis.stage1.investorSignals.positive.length === 0) && (
+                        <li className="text-xs text-zinc-500 italic">-</li>
+                      )}
+                    </ul>
+                  </div>
+                  <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/10">
+                    <h4 className="text-xs font-bold text-amber-400 uppercase mb-3 flex items-center gap-2">
+                      <AlertCircle className="w-3 h-3" /> Negative
+                    </h4>
+                    <ul className="space-y-2">
+                      {(analysis.stage1?.investorSignals?.negative || []).map((item, i) => (
+                        <li key={i} className="text-xs text-zinc-300 pl-3 border-l border-amber-500/30">{item}</li>
+                      ))}
+                      {(!analysis.stage1?.investorSignals?.negative || analysis.stage1.investorSignals.negative.length === 0) && (
+                        <li className="text-xs text-zinc-500 italic">-</li>
+                      )}
+                    </ul>
+                  </div>
+                  <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/10">
+                    <h4 className="text-xs font-bold text-red-400 uppercase mb-3 flex items-center gap-2">
+                      <AlertTriangle className="w-3 h-3" /> Critical
+                    </h4>
+                    <ul className="space-y-2">
+                      {(analysis.stage1?.investorSignals?.critical || []).map((item, i) => (
+                        <li key={i} className="text-xs text-zinc-300 pl-3 border-l border-red-500/30">{item}</li>
+                      ))}
+                      {(!analysis.stage1?.investorSignals?.critical || analysis.stage1.investorSignals.critical.length === 0) && (
+                        <li className="text-xs text-zinc-500 italic">-</li>
+                      )}
                     </ul>
                   </div>
                 </div>
               </div>
 
-              {/* Logic Column */}
-              <div className="space-y-6">
-                <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-medium text-white flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4 text-blue-300" /> Logic Flow
-                    </h3>
-                    <span className="text-2xl font-light text-white">{logic.flowScore}%</span>
+              {/* Pattern Matching */}
+              <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
+                <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-6">Pattern Matching</h3>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-xl bg-black/20 border border-white/5">
+                    <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Similar Successes</h4>
+                    <ul className="space-y-1">
+                      {(analysis.stage1?.patternMatching?.similarSuccesses || []).map((item, i) => (
+                        <li key={i} className="text-xs text-zinc-300">• {item}</li>
+                      ))}
+                      {(!analysis.stage1?.patternMatching?.similarSuccesses || analysis.stage1.patternMatching.similarSuccesses.length === 0) && (
+                        <li className="text-xs text-zinc-500 italic">-</li>
+                      )}
+                    </ul>
                   </div>
-
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Gap Analysis</h4>
-                    {(logic.gaps && logic.gaps.length > 0) ? (
-                      logic.gaps.map((g: string, i: number) => (
-                        <div key={i} className="p-3 bg-red-500/5 border border-red-500/10 rounded-lg">
-                          <p className="text-xs text-red-200">{g}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-4 border border-dashed border-zinc-800 rounded-lg text-center text-xs text-zinc-500">
-                        No major logic gaps detected.
-                      </div>
-                    )}
+                  <div className="p-4 rounded-xl bg-black/20 border border-white/5">
+                    <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Similar Failures</h4>
+                    <ul className="space-y-1">
+                      {(analysis.stage1?.patternMatching?.similarFailures || []).map((item, i) => (
+                        <li key={i} className="text-xs text-zinc-300">• {item}</li>
+                      ))}
+                      {(!analysis.stage1?.patternMatching?.similarFailures || analysis.stage1.patternMatching.similarFailures.length === 0) && (
+                        <li className="text-xs text-zinc-500 italic">-</li>
+                      )}
+                    </ul>
+                  </div>
+                  <div className="p-4 rounded-xl bg-black/20 border border-white/5">
+                    <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Unique Aspects</h4>
+                    <ul className="space-y-1">
+                      {(analysis.stage1?.patternMatching?.uniqueAspects || []).map((item, i) => (
+                        <li key={i} className="text-xs text-zinc-300">• {item}</li>
+                      ))}
+                      {(!analysis.stage1?.patternMatching?.uniqueAspects || analysis.stage1.patternMatching.uniqueAspects.length === 0) && (
+                        <li className="text-xs text-zinc-500 italic">-</li>
+                      )}
+                    </ul>
                   </div>
                 </div>
               </div>
+
+              {/* Investment Readiness & Raw Verdict */}
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
+                  <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-4">Investment Readiness</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between py-2 border-b border-white/5">
+                      <span className="text-xs text-zinc-500">Stage</span>
+                      <span className="text-sm text-white font-medium">{display(analysis.stage1?.investmentReadiness?.stage)}</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-white/5">
+                      <span className="text-xs text-zinc-500">Readiness</span>
+                      <span className="text-sm text-white font-medium">{display(analysis.stage1?.investmentReadiness?.readiness)}</span>
+                    </div>
+                    <div className="pt-2">
+                      <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Gap to Fundable</h4>
+                      <p className="text-sm text-zinc-300">{display(analysis.stage1?.investmentReadiness?.gapToFundable)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
+                  <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-4">Raw Verdict</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between py-2 border-b border-white/5">
+                      <span className="text-xs text-zinc-500">Decision</span>
+                      <span className={cn(
+                        "text-sm font-bold uppercase",
+                        analysis.stage1?.rawVerdict?.decision?.toLowerCase() === 'decline' ? 'text-red-400' : 'text-emerald-400'
+                      )}>{display(analysis.stage1?.rawVerdict?.decision)}</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-b border-white/5">
+                      <span className="text-xs text-zinc-500">Confidence</span>
+                      <span className="text-sm text-white font-medium">{display(analysis.stage1?.rawVerdict?.confidence)}</span>
+                    </div>
+                    <div className="pt-2">
+                      <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Key Reason</h4>
+                      <p className="text-sm text-zinc-300">{display(analysis.stage1?.rawVerdict?.keyReason)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </motion.div>
           )}
 
-          {/* PERSUASION TAB */}
-          {activeTab === 'persuasion' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-              <div className="p-8 rounded-3xl bg-zinc-900/30 border border-white/5">
-                <h3 className="text-sm font-medium text-zinc-400 uppercase tracking-widest mb-8">Persuasion Drivers</h3>
-                <div className="space-y-8">
-                  {[
-                    { label: 'Evidence Based', val: persuasion.elements?.evidenceBased },
-                    { label: 'Differentiation', val: persuasion.elements?.differentiation },
-                    { label: 'Urgency', val: persuasion.elements?.urgency },
-                    { label: 'Social Proof', val: persuasion.elements?.socialProof }
-                  ].map((item, i) => (
-                    <div key={i} className="relative">
-                      <div className="flex justify-between items-end mb-2">
-                        <span className="text-base text-white font-medium">{item.label}</span>
-                        <span className="text-sm text-zinc-500 font-mono">{item.val}/100</span>
+          {/* STAGE 2 TAB */}
+          {activeTab === 'stage2' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+              
+              {/* Scorecard */}
+              <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
+                <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4" /> Scorecard
+                </h3>
+                <div className="space-y-4">
+                  {analysis.stage2?.scorecard && Object.entries(analysis.stage2.scorecard).map(([key, data]) => (
+                    <div key={key} className="p-4 rounded-xl bg-black/20 border border-white/5">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-medium text-white">{key}</h4>
+                        <span className="text-2xl font-light text-white">{display(data.score)}</span>
                       </div>
-                      <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${item.val}%` }}
-                          transition={{ duration: 1, delay: i * 0.1 }}
-                          className="h-full bg-white"
-                        />
-                      </div>
+                      <p className="text-xs text-zinc-400">{display(data.reasoning)}</p>
                     </div>
                   ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ACTION PLAN TAB */}
-          {activeTab === 'action_plan' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-
-              {/* Risks Section (Skeptic Mode) */}
-              <div className="p-6 rounded-3xl bg-red-500/5 border border-red-500/10">
-                <h3 className="text-sm font-bold text-red-400 uppercase tracking-widest flex items-center gap-2 mb-6">
-                  <AlertTriangle className="w-4 h-4" /> Investor Red Flags (Skeptic Mode)
-                </h3>
-                <div className="grid gap-3">
-                  {(analysis.risks && analysis.risks.length > 0) ? (
-                    analysis.risks.map((risk: string, i: number) => (
-                      <div key={i} className="flex gap-3 items-start p-3 bg-red-500/5 rounded-lg">
-                        <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
-                        <span className="text-sm text-red-200/80">{risk}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center text-zinc-500 py-4 italic">No major red flags detected. Good job!</div>
+                  {(!analysis.stage2?.scorecard || Object.keys(analysis.stage2.scorecard).length === 0) && (
+                    <div className="text-center text-zinc-500 py-8 italic">No scorecard data available</div>
                   )}
                 </div>
               </div>
 
-              {/* Action Items (Fix-It Roadmap) */}
-              <div className="p-6 rounded-3xl bg-indigo-500/5 border border-indigo-500/10">
-                <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-2 mb-6">
-                  <CheckSquare className="w-4 h-4" /> Fix-It Roadmap
+              {/* Gap Diagnosis */}
+              <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
+                <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-6">Gap Diagnosis</h3>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/10">
+                    <h4 className="text-xs font-bold text-red-400 uppercase mb-2">Biggest Gap</h4>
+                    <p className="text-sm text-zinc-300">{display(analysis.stage2?.gapDiagnosis?.biggestGap)}</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
+                    <h4 className="text-xs font-bold text-emerald-400 uppercase mb-2">Fastest Win</h4>
+                    <p className="text-sm text-zinc-300">{display(analysis.stage2?.gapDiagnosis?.fastestWin)}</p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/10">
+                    <h4 className="text-xs font-bold text-amber-400 uppercase mb-2">Dangerous Illusions</h4>
+                    <p className="text-sm text-zinc-300">{display(analysis.stage2?.gapDiagnosis?.dangerousIllusions)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Prioritized Checklist */}
+              <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
+                <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                  <CheckSquare className="w-4 h-4" /> Prioritized Checklist
                 </h3>
-                <div className="space-y-3">
-                  {(analysis.actionItems && analysis.actionItems.length > 0) ? (
-                    analysis.actionItems.map((item: string, i: number) => (
-                      <div key={i} className="flex gap-3 items-start group">
-                        <div className="mt-1 w-4 h-4 rounded-full border border-indigo-500/30 group-hover:bg-indigo-500/20 transition-colors shrink-0" />
-                        <p className="text-sm text-zinc-300">{item}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center text-zinc-500 py-4 italic">No specific action items generated.</div>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/10">
+                    <h4 className="text-xs font-bold text-red-400 uppercase mb-3">High Priority</h4>
+                    <ul className="space-y-2">
+                      {(analysis.stage2?.prioritizedChecklist?.high || []).map((item, i) => (
+                        <li key={i} className="text-xs text-zinc-300 pl-3 border-l border-red-500/30">{item}</li>
+                      ))}
+                      {(!analysis.stage2?.prioritizedChecklist?.high || analysis.stage2.prioritizedChecklist.high.length === 0) && (
+                        <li className="text-xs text-zinc-500 italic">-</li>
+                      )}
+                    </ul>
+                  </div>
+                  <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/10">
+                    <h4 className="text-xs font-bold text-amber-400 uppercase mb-3">Medium Priority</h4>
+                    <ul className="space-y-2">
+                      {(analysis.stage2?.prioritizedChecklist?.medium || []).map((item, i) => (
+                        <li key={i} className="text-xs text-zinc-300 pl-3 border-l border-amber-500/30">{item}</li>
+                      ))}
+                      {(!analysis.stage2?.prioritizedChecklist?.medium || analysis.stage2.prioritizedChecklist.medium.length === 0) && (
+                        <li className="text-xs text-zinc-500 italic">-</li>
+                      )}
+                    </ul>
+                  </div>
+                  <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
+                    <h4 className="text-xs font-bold text-blue-400 uppercase mb-3">Low Priority</h4>
+                    <ul className="space-y-2">
+                      {(analysis.stage2?.prioritizedChecklist?.low || []).map((item, i) => (
+                        <li key={i} className="text-xs text-zinc-300 pl-3 border-l border-blue-500/30">{item}</li>
+                      ))}
+                      {(!analysis.stage2?.prioritizedChecklist?.low || analysis.stage2.prioritizedChecklist.low.length === 0) && (
+                        <li className="text-xs text-zinc-500 italic">-</li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Decision Logic & Improvement Potential */}
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
+                  <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-4">Decision Logic</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between py-2 border-b border-white/5">
+                      <span className="text-xs text-zinc-500">Decision</span>
+                      <span className={cn(
+                        "text-sm font-bold uppercase",
+                        analysis.stage2?.decisionLogic?.decision?.toLowerCase() === 'decline' ? 'text-red-400' : 'text-emerald-400'
+                      )}>{display(analysis.stage2?.decisionLogic?.decision)}</span>
+                    </div>
+                    <div className="pt-2">
+                      <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Reasoning</h4>
+                      <p className="text-sm text-zinc-300">{display(analysis.stage2?.decisionLogic?.reasoning)}</p>
+                    </div>
+                    <div className="pt-2">
+                      <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Conditions</h4>
+                      <p className="text-sm text-zinc-300">{display(analysis.stage2?.decisionLogic?.conditions)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
+                  <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-4">Improvement Potential</h3>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-zinc-500">Current</span>
+                      <span className="text-3xl font-light text-white">{display(analysis.stage2?.improvementPotential?.current)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-zinc-500">Target</span>
+                      <span className="text-2xl font-light text-emerald-400">{display(analysis.stage2?.improvementPotential?.target)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-zinc-500">Ceiling</span>
+                      <span className="text-2xl font-light text-indigo-400">{display(analysis.stage2?.improvementPotential?.ceiling)}</span>
+                    </div>
+                    <div className="flex justify-between py-2 border-t border-white/5">
+                      <span className="text-xs text-zinc-500">Confidence</span>
+                      <span className="text-sm text-white font-medium">{display(analysis.stage2?.improvementPotential?.confidence)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </motion.div>
+          )}
+
+          {/* STAGE 3 TAB */}
+          {activeTab === 'stage3' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+              
+              {/* Test Results Grid */}
+              <div className="grid md:grid-cols-2 gap-6">
+                
+                {/* Consistency Test */}
+                <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Consistency Test</h3>
+                    <span className="text-3xl font-light text-white">{display(analysis.stage3?.consistency_test?.score)}</span>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Critical Issue</h4>
+                    <p className="text-sm text-zinc-300">{display(analysis.stage3?.consistency_test?.critical_issue)}</p>
+                  </div>
+                </div>
+
+                {/* Assumption Stress Test */}
+                <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Assumption Stress Test</h3>
+                    <span className="text-3xl font-light text-white">{display(analysis.stage3?.assumption_stress_test?.score)}</span>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Fatal Dependency</h4>
+                    <p className="text-sm text-zinc-300">{display(analysis.stage3?.assumption_stress_test?.fatal_dependency)}</p>
+                  </div>
+                </div>
+
+                {/* Objection Coverage Test */}
+                <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Objection Coverage Test</h3>
+                    <span className="text-3xl font-light text-white">{display(analysis.stage3?.objection_coverage_test?.score)}</span>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Missed High Impact Item</h4>
+                    <p className="text-sm text-zinc-300">{display(analysis.stage3?.objection_coverage_test?.missed_high_impact_item)}</p>
+                  </div>
+                </div>
+
+                {/* Clarity Under Pressure Test */}
+                <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Clarity Under Pressure</h3>
+                    <span className="text-3xl font-light text-white">{display(analysis.stage3?.clarity_under_pressure_test?.score)}</span>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">30s Takeaway</h4>
+                    <p className="text-sm text-zinc-300 italic">&quot;{display(analysis.stage3?.clarity_under_pressure_test?.['30s_takeaway'])}&quot;</p>
+                  </div>
+                </div>
+
+                {/* Market Believability Test */}
+                <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Market Believability</h3>
+                    <span className="text-3xl font-light text-white">{display(analysis.stage3?.market_believability_test?.score)}</span>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Unconvincing Claim</h4>
+                    <p className="text-sm text-zinc-300">{display(analysis.stage3?.market_believability_test?.unconvincing_claim)}</p>
+                  </div>
+                </div>
+
+                {/* Story Coherence Test */}
+                <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest">Story Coherence</h3>
+                    <span className="text-3xl font-light text-white">{display(analysis.stage3?.story_coherence_test?.score)}</span>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Flow Break Point</h4>
+                    <p className="text-sm text-zinc-300">{display(analysis.stage3?.story_coherence_test?.flow_break_point)}</p>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Final Readiness Scoring */}
+              <div className="p-8 rounded-3xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20">
+                <div className="text-center space-y-4">
+                  <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-widest">Final Readiness Scoring</h3>
+                  <div className="text-6xl font-light text-white">{display(analysis.stage3?.final_readiness_scoring?.overall_readiness)}</div>
+                  <div className="inline-block px-4 py-2 rounded-full bg-white/10 border border-white/20">
+                    <span className="text-sm font-bold text-white uppercase tracking-wider">
+                      Band: {display(analysis.stage3?.final_readiness_scoring?.readiness_band)}
+                    </span>
+                  </div>
+                  {analysis.stage3?.final_readiness_scoring?.critical_issue_penalties && (
+                    <div className="text-xs text-amber-400 flex items-center justify-center gap-2">
+                      <AlertTriangle className="w-3 h-3" />
+                      Critical Issue Penalties Applied
+                    </div>
                   )}
                 </div>
               </div>
-            </motion.div>
-          )}
 
-          {/* ASSETS TAB */}
-          {activeTab === 'assets' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid md:grid-cols-2 gap-6">
-
-              {/* Elevator Pitch */}
-              <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5 flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                    30s Elevator Pitch
-                  </h3>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(analysis.assets?.elevatorPitch || '')}
-                    className="p-1.5 hover:bg-white/10 rounded-md text-zinc-400 hover:text-white transition-colors"
-                    title="Copy"
-                  >
-                    <Copy className="w-3 h-3" />
-                  </button>
-                </div>
-                <div className="flex-1 bg-black/20 rounded-xl p-4 text-sm text-zinc-300 leading-relaxed font-serif italic border border-white/5">
-                  &quot;{analysis.assets?.elevatorPitch || 'Not generated.'}&quot;
-                </div>
-              </div>
-
-              {/* Cold Email */}
-              <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5 flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                    <Mail className="w-3.5 h-3.5" /> Investor Cold Email
-                  </h3>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(analysis.assets?.coldEmail || '')}
-                    className="p-1.5 hover:bg-white/10 rounded-md text-zinc-400 hover:text-white transition-colors"
-                    title="Copy"
-                  >
-                    <Copy className="w-3 h-3" />
-                  </button>
-                </div>
-                <div className="flex-1 bg-black/20 rounded-xl p-4 text-xs text-zinc-400 font-mono whitespace-pre-wrap border border-white/5">
-                  {analysis.assets?.coldEmail || 'Not generated.'}
+              {/* Investor Gate Verdict */}
+              <div className="p-6 rounded-3xl bg-zinc-900/30 border border-white/5">
+                <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                  <Shield className="w-4 h-4" /> Investor Gate Verdict
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center py-3 border-b border-white/5">
+                    <span className="text-sm text-zinc-500">Pass Human Review</span>
+                    <span className={cn(
+                      "text-lg font-bold uppercase",
+                      analysis.stage3?.investor_gate_verdict?.pass_human_review ? 'text-emerald-400' : 'text-red-400'
+                    )}>
+                      {display(analysis.stage3?.investor_gate_verdict?.pass_human_review)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-3 border-b border-white/5">
+                    <span className="text-sm text-zinc-500">Confidence Level</span>
+                    <span className="text-lg font-medium text-white">{display(analysis.stage3?.investor_gate_verdict?.confidence_level)}</span>
+                  </div>
+                  <div className="pt-2">
+                    <h4 className="text-xs font-bold text-zinc-500 uppercase mb-2">Main Blocking Reason</h4>
+                    <p className="text-sm text-zinc-300 p-4 rounded-xl bg-red-500/5 border border-red-500/10">
+                      {display(analysis.stage3?.investor_gate_verdict?.main_blocking_reason)}
+                    </p>
+                  </div>
                 </div>
               </div>
 
             </motion.div>
           )}
 
-          {/* TRANSCRIPT TAB (Removed as per instruction) */}
-          {/* The original transcript tab content is removed here. */}
+          {/* METADATA TAB */}
+          {activeTab === 'metadata' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+              
+              <div className="p-8 rounded-3xl bg-zinc-900/30 border border-white/5">
+                <h3 className="text-sm font-bold text-zinc-400 uppercase tracking-widest mb-6">Analysis Metadata</h3>
+                <div className="grid md:grid-cols-3 gap-6">
+                  <div className="text-center p-6 rounded-xl bg-black/20 border border-white/5">
+                    <div className="text-xs text-zinc-500 uppercase mb-2">Analyzed At</div>
+                    <div className="text-lg text-white font-medium">
+                      {analysis.metadata?.analyzedAt 
+                        ? new Date(analysis.metadata.analyzedAt).toLocaleString() 
+                        : '-'}
+                    </div>
+                  </div>
+                  <div className="text-center p-6 rounded-xl bg-black/20 border border-white/5">
+                    <div className="text-xs text-zinc-500 uppercase mb-2">Pitch Deck Length</div>
+                    <div className="text-3xl text-white font-light">{display(analysis.metadata?.pitchDeckLength)}</div>
+                    <div className="text-xs text-zinc-500 mt-1">characters</div>
+                  </div>
+                  <div className="text-center p-6 rounded-xl bg-black/20 border border-white/5">
+                    <div className="text-xs text-zinc-500 uppercase mb-2">Processing Time</div>
+                    <div className="text-3xl text-white font-light">
+                      {analysis.metadata?.processingTimeMs 
+                        ? (analysis.metadata.processingTimeMs / 1000).toFixed(2) 
+                        : '-'}
+                    </div>
+                    <div className="text-xs text-zinc-500 mt-1">seconds</div>
+                  </div>
+                </div>
+              </div>
+
+            </motion.div>
+          )}
 
         </div>
       </div>
     </div>
   )
 }
-

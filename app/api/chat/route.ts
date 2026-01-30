@@ -17,7 +17,7 @@ function getOpenAIClient() {
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 120 // 2 minutes for chat
+export const maxDuration = 300 // 5 minutes for chat
 
 export async function POST(request: NextRequest) {
   try {

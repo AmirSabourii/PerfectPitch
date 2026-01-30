@@ -1,0 +1,95 @@
+/* Dark Theme for Admin Panel */
+.admin-dark {
+  background-color: #0f172a;
+  color: #f1f5f9;
+  min-height: 100vh;
+}
+
+.admin-dark .bg-white {
+  background-color: #1e293b !important;
+}
+
+.admin-dark .bg-gray-50 {
+  background-color: #0f172a !important;
+}
+
+.admin-dark .bg-gray-100 {
+  background-color: #1e293b !important;
+}
+
+.admin-dark .text-gray-900 {
+  color: #f1f5f9 !important;
+}
+
+.admin-dark .text-gray-800 {
+  color: #e2e8f0 !important;
+}
+
+.admin-dark .text-gray-700 {
+  color: #cbd5e1 !important;
+}
+
+.admin-dark .text-gray-600 {
+  color: #94a3b8 !important;
+}
+
+.admin-dark .text-gray-500 {
+  color: #64748b !important;
+}
+
+.admin-dark .border-gray-200 {
+  border-color: #334155 !important;
+}
+
+.admin-dark .border-gray-300 {
+  border-color: #475569 !important;
+}
+
+.admin-dark .divide-gray-200 > * + * {
+  border-color: #334155 !important;
+}
+
+.admin-dark input,
+.admin-dark textarea,
+.admin-dark select {
+  background-color: #1e293b !important;
+  border-color: #475569 !important;
+  color: #f1f5f9 !important;
+}
+
+.admin-dark input:disabled,
+.admin-dark textarea:disabled,
+.admin-dark select:disabled {
+  background-color: #0f172a !important;
+  color: #64748b !important;
+}
+
+.admin-dark .hover\:bg-gray-50:hover {
+  background-color: #334155 !important;
+}
+
+.admin-dark .hover\:bg-gray-100:hover {
+  background-color: #334155 !important;
+}
+
+.admin-dark .shadow {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 1px 2px 0 rgba(0, 0, 0, 0.3) !important;
+}
+
+.admin-dark .shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Keep colored backgrounds */
+.admin-dark .bg-blue-50,
+.admin-dark .bg-blue-100,
+.admin-dark .bg-green-50,
+.admin-dark .bg-green-100,
+.admin-dark .bg-purple-50,
+.admin-dark .bg-purple-100,
+.admin-dark .bg-yellow-50,
+.admin-dark .bg-yellow-100,
+.admin-dark .bg-red-50,
+.admin-dark .bg-red-100 {
+  opacity: 0.9;
+}

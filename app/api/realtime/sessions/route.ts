@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import * as admin from 'firebase-admin'
 import { adminAuth } from '@/lib/admin'
-import { checkUsage, incrementUsage, getUserPlan } from '@/lib/limits'
+import { checkCredits, useCredits, getUserCredits } from '@/lib/limits'
 
 // Increase max duration for realtime session creation
-export const maxDuration = 60 // 60 seconds
+export const maxDuration = 300 // 5 minutes
 export const runtime = 'nodejs'
 
 // Role definitions
@@ -103,24 +103,14 @@ export async function POST(request: Request) {
         
         const { prompt, role, documentContext, pitch_transcript } = body
 
-        // 2. Check Plan & Role Access
-        const userPlan = await getUserPlan(uid)
-
-        if (role === 'founder_test' && userPlan !== 'pro') {
+        // 2. Check Credits (all roles now require credits)
+        const creditCheck = await checkCredits(uid, 'realtime_session')
+        if (!creditCheck.allowed) {
             return NextResponse.json({
-                error: 'Founder Test mode is available only on Pro plan.',
-                code: 'PREMIUM_FEATURE',
-                requiresUpgrade: true
-            }, { status: 403 })
-        }
-
-        // 3. Check Usage Limits
-        const limitCheck = await checkUsage(uid, 'roleplay')
-        if (!limitCheck.allowed) {
-            return NextResponse.json({
-                error: limitCheck.message,
-                code: 'LIMIT_REACHED',
-                requiresUpgrade: true
+                error: creditCheck.message,
+                code: 'INSUFFICIENT_CREDITS',
+                required: creditCheck.required,
+                available: creditCheck.credits?.remaining || 0
             }, { status: 403 })
         }
 
@@ -141,14 +131,14 @@ export async function POST(request: Request) {
         if (body.analysisSummary) contextBlock += `\n[AI ANALYSIS SUMMARY]:\n"${body.analysisSummary}"\n`
         if (body.risks && body.risks.length > 0) contextBlock += `\n[RED FLAGS / RISKS DETECTED]:\n- ${body.risks.join('\n- ')}\n`
 
-        // Add full transcript if available (reduced length for lighter model)
+        // Add full transcript if available (optimized length for cost)
         if (pitch_transcript) {
-            contextBlock += `\n[TRANSCRIPT]:\n"${pitch_transcript.substring(0, 3000)}"`
+            contextBlock += `\n[TRANSCRIPT]:\n"${pitch_transcript.substring(0, 2500)}"`
             baseInstructions += `\n\nUse the pitch details. Ask specific questions based on RISKS.`
         }
 
         if (documentContext) {
-            contextBlock += `\n\n[DECK]:\n"${documentContext.substring(0, 2500)}"`
+            contextBlock += `\n\n[DECK]:\n"${documentContext.substring(0, 2000)}"`
         }
 
         baseInstructions += contextBlock
@@ -200,9 +190,12 @@ export async function POST(request: Request) {
 
         const data = await response.json()
 
-        // 4. Increment usage on success (don't wait for it)
-        incrementUsage(uid, 'roleplay').catch(err => {
-            console.error('Failed to increment usage:', err)
+        // 4. Deduct credits on success (don't wait for it)
+        useCredits(uid, 'realtime_session', { 
+            sessionId: data.id,
+            role 
+        }).catch(err => {
+            console.error('Failed to deduct credits:', err)
         })
 
         return NextResponse.json(data)

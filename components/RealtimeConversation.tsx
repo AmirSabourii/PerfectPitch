@@ -10,9 +10,10 @@ import { useAuth } from '@/contexts/AuthContext'
 import { RoleType } from './RoleSelector'
 
 import { DeepAnalysisResult, ContextData } from '@/lib/types'
+import { PerfectPitchAnalysis } from '@/lib/perfectPitchTypes'
 
 interface RealtimeConversationProps {
-  analysisResult?: DeepAnalysisResult | null
+  analysisResult?: DeepAnalysisResult | PerfectPitchAnalysis | null
   contextData?: ContextData
   pitchContext?: any // Keep for backward compatibility/fallback
   onEnd: () => void
@@ -32,14 +33,24 @@ export default function RealtimeConversation({
   const [status, setStatus] = useState<'idle' | 'connecting' | 'connected'>('idle')
   const [isMicMuted, setIsMicMuted] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sessionDuration, setSessionDuration] = useState(0)
 
   const audioElRef = useRef<HTMLAudioElement | null>(null)
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const [vizStream, setVizStream] = useState<MediaStream | null>(null)
+  const sessionTimerRef = useRef<NodeJS.Timeout | null>(null)
+  
+  // Maximum session duration: 5 minutes for Starter, 10 minutes for Pro/Organization
+  // TODO: Get this from user's plan configuration
+  const MAX_SESSION_DURATION = 300 // Default: 5 minutes (300 seconds)
 
   // Cleanup function to ensure everything is closed strictly once
   const cleanupSession = useCallback(() => {
+    if (sessionTimerRef.current) {
+      clearInterval(sessionTimerRef.current)
+      sessionTimerRef.current = null
+    }
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close()
       peerConnectionRef.current = null
@@ -87,10 +98,10 @@ export default function RealtimeConversation({
             industry: contextData?.industry,
             targetAudience: contextData?.targetAudience,
 
-            // New Analysis Injection
-            analysisSummary: analysisResult?.summary,
-            risks: analysisResult?.risks,
-            weaknesses: analysisResult?.weaknesses,
+            // New Analysis Injection - handle both analysis types
+            analysisSummary: 'summary' in (analysisResult || {}) ? (analysisResult as DeepAnalysisResult).summary : undefined,
+            risks: 'risks' in (analysisResult || {}) ? (analysisResult as DeepAnalysisResult).risks : undefined,
+            weaknesses: 'weaknesses' in (analysisResult || {}) ? (analysisResult as DeepAnalysisResult).weaknesses : undefined,
 
             prompt: { id: 'default' }
           }),
@@ -202,6 +213,22 @@ export default function RealtimeConversation({
 
         if (isMounted) {
           setStatus('connected')
+          
+          // Start session timer
+          sessionTimerRef.current = setInterval(() => {
+            setSessionDuration(prev => {
+              const newDuration = prev + 1
+              
+              // Auto-end session after MAX_SESSION_DURATION
+              if (newDuration >= MAX_SESSION_DURATION) {
+                console.log('[RealtimeConversation] Max session duration reached, ending session')
+                cleanupSession()
+                onEnd()
+              }
+              
+              return newDuration
+            })
+          }, 1000)
         }
 
       } catch (err: any) {
@@ -276,6 +303,17 @@ export default function RealtimeConversation({
   }
 
   const { title, icon: Icon, color } = getRoleInfo()
+  
+  // Format session duration as MM:SS
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+  
+  // Calculate remaining time
+  const remainingTime = MAX_SESSION_DURATION - sessionDuration
+  const isNearingEnd = remainingTime <= 60 && status === 'connected'
 
   return (
     <div className="flex flex-col items-center justify-center p-8 w-full max-w-4xl min-h-[500px]">
@@ -283,7 +321,20 @@ export default function RealtimeConversation({
       {/* Top Status Bar */}
       <div className="flex items-center gap-3 mb-12 opacity-50">
         <div className={cn("w-2 h-2 rounded-full", status === 'connected' ? "bg-emerald-500 animate-pulse" : "bg-amber-500")} />
-        <span className="text-xs font-mono tracking-widest">{status === 'connected' ? 'LIVE CONNECTION ESTABLISHED' : 'ESTABLISHING SECURE CONNECTION...'}</span>
+        <span className="text-xs font-mono tracking-widest">
+          {status === 'connected' ? 'LIVE CONNECTION ESTABLISHED' : 'ESTABLISHING SECURE CONNECTION...'}
+        </span>
+        {status === 'connected' && (
+          <>
+            <span className="text-zinc-700">•</span>
+            <span className={cn(
+              "text-xs font-mono tracking-widest",
+              isNearingEnd ? "text-amber-500 animate-pulse" : "text-zinc-500"
+            )}>
+              {formatDuration(sessionDuration)} / {formatDuration(MAX_SESSION_DURATION)}
+            </span>
+          </>
+        )}
       </div>
 
       {/* Main Visualizer Area */}

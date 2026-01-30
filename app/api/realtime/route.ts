@@ -8,7 +8,7 @@ const openai = new OpenAI({
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 60 // 60 seconds
+export const maxDuration = 300 // 5 minutes
 
 // This is a WebSocket handler for Next.js
 // Note: Next.js doesn't natively support WebSocket, so we'll need to use a workaround

@@ -4,11 +4,13 @@ import { useDashboard } from '@/contexts/DashboardContext'
 import { useAuth } from '@/contexts/AuthContext'
 import { View } from '@/lib/types'
 import { cn } from '@/lib/utils'
-import { Mic, Video, LayoutGrid, User, Crown, LogOut } from 'lucide-react'
+import { Mic, Video, LayoutGrid, User, Crown, LogOut, Zap } from 'lucide-react'
+import { useDashboardCopy } from '@/hooks/useCopy'
 
 export function DashboardSidebar() {
-    const { currentView, setCurrentView, analysisResult } = useDashboard()
+    const { currentView, setCurrentView } = useDashboard()
     const { logout } = useAuth()
+    const { copy } = useDashboardCopy()
 
     const SidebarItem = ({ view, icon: Icon, label, isPremium }: { view: View, icon: any, label: string, isPremium?: boolean }) => (
         <div
@@ -38,31 +40,24 @@ export function DashboardSidebar() {
                 <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
                     <div className="w-4 h-4 bg-[#030303] rounded-sm" />
                 </div>
-                <span className="font-bold text-lg tracking-tight">PerfectPitch</span>
+                <span className="font-bold text-lg tracking-tight">{copy.sidebar.brand}</span>
             </div>
 
             <nav className="flex-1 space-y-1">
-                <SidebarItem view="dashboard" icon={Mic} label="Practice" />
-                <SidebarItem view="pitch_recorder" icon={Video} label="Pitch Recorder" />
-                <SidebarItem view="history" icon={LayoutGrid} label="History" />
-                <SidebarItem view="profile" icon={User} label="Profile" />
+                <SidebarItem view="dashboard" icon={Mic} label={copy.sidebar.practice} />
+                <SidebarItem view="pitch_recorder" icon={Video} label={copy.sidebar.recorder} />
+                <SidebarItem view="credits" icon={Zap} label="Credits" />
+                <SidebarItem view="history" icon={LayoutGrid} label={copy.sidebar.history} />
+                <SidebarItem view="profile" icon={User} label={copy.sidebar.profile} />
             </nav>
 
             <div className="pt-4 border-t border-white/5 space-y-2">
-                <div
-                    onClick={() => setCurrentView('pricing')}
-                    className={cn("flex items-center gap-3 text-white cursor-pointer transition-colors px-3 py-2 rounded-full border border-white/10 hover:bg-white/5", currentView === 'pricing' && "bg-white/10")}
-                >
-                    <Crown className="w-4 h-4 text-white" />
-                    <span className="text-sm font-medium">Upgrade Plan</span>
-                </div>
-
                 <div
                     onClick={() => logout()}
                     className="flex items-center gap-3 text-zinc-500 hover:text-white cursor-pointer transition-colors px-3 py-2 rounded-full hover:bg-white/5"
                 >
                     <LogOut className="w-4 h-4" />
-                    <span className="text-sm">Sign Out</span>
+                    <span className="text-sm">{copy.sidebar.signOut}</span>
                 </div>
             </div>
         </aside>

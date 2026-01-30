@@ -1,0 +1,296 @@
+// Plan Limits Configuration (Simplified Version 2.0)
+// این فایل محدودیت‌های هر پلن را تعریف می‌کند
+
+export type PlanType = 'free' | 'pro' | 'team' | 'scale' | 'enterprise'
+
+export interface PlanLimits {
+  // Analysis limits
+  pitchAnalysisPerMonth: number // -1 = unlimited
+  audioTranscriptionPerMonth: number // -1 = unlimited
+  realtimeSessionsPerMonth: number // -1 = unlimited
+  
+  // Session limits
+  maxRealtimeSessionDuration: number // in seconds
+  
+  // Features
+  hasFounderTestMode: boolean
+  hasPitchRecorder: boolean
+  hasAdvancedAnalytics: boolean
+  hasAPIAccess: boolean
+  hasWhiteLabel: boolean
+  hasPrioritySupport: boolean
+  hasCustomBranding: boolean
+  
+  // Storage & History
+  historyRetentionDays: number // -1 = unlimited
+  
+  // Export
+  canExportPDF: boolean
+  canExportPowerPoint: boolean
+  
+  // Team features
+  maxTeamMembers: number // -1 = unlimited
+  hasTeamDashboard: boolean
+  hasAdminPanel: boolean
+  hasScoreFiltering: boolean // Admin can set score threshold
+  hasDedicatedDatabase: boolean
+}
+
+export const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
+  free: {
+    pitchAnalysisPerMonth: 1, // فقط یکبار برای همیشه
+    audioTranscriptionPerMonth: 0,
+    realtimeSessionsPerMonth: 0,
+    maxRealtimeSessionDuration: 0,
+    hasFounderTestMode: false,
+    hasPitchRecorder: false,
+    hasAdvancedAnalytics: false,
+    hasAPIAccess: false,
+    hasWhiteLabel: false,
+    hasPrioritySupport: false,
+    hasCustomBranding: false,
+    historyRetentionDays: 7,
+    canExportPDF: false,
+    canExportPowerPoint: false,
+    maxTeamMembers: 1,
+    hasTeamDashboard: false,
+    hasAdminPanel: false,
+    hasScoreFiltering: false,
+    hasDedicatedDatabase: false,
+  },
+  
+  pro: {
+    pitchAnalysisPerMonth: 20,
+    audioTranscriptionPerMonth: 15,
+    realtimeSessionsPerMonth: 5, // محدود به 5 برای سودآوری
+    maxRealtimeSessionDuration: 300, // 5 minutes
+    hasFounderTestMode: true,
+    hasPitchRecorder: true,
+    hasAdvancedAnalytics: true,
+    hasAPIAccess: false,
+    hasWhiteLabel: false,
+    hasPrioritySupport: true,
+    hasCustomBranding: false,
+    historyRetentionDays: -1, // unlimited
+    canExportPDF: true,
+    canExportPowerPoint: true,
+    maxTeamMembers: 1,
+    hasTeamDashboard: false,
+    hasAdminPanel: false,
+    hasScoreFiltering: false,
+    hasDedicatedDatabase: false,
+  },
+  
+  team: {
+    pitchAnalysisPerMonth: 20, // per user
+    audioTranscriptionPerMonth: 15, // per user
+    realtimeSessionsPerMonth: 5, // per user
+    maxRealtimeSessionDuration: 300, // 5 minutes
+    hasFounderTestMode: true,
+    hasPitchRecorder: true,
+    hasAdvancedAnalytics: true,
+    hasAPIAccess: false,
+    hasWhiteLabel: false,
+    hasPrioritySupport: true,
+    hasCustomBranding: true,
+    historyRetentionDays: -1, // unlimited
+    canExportPDF: true,
+    canExportPowerPoint: true,
+    maxTeamMembers: 10,
+    hasTeamDashboard: true,
+    hasAdminPanel: true,
+    hasScoreFiltering: true, // Admin can filter by score
+    hasDedicatedDatabase: false,
+  },
+  
+  scale: {
+    pitchAnalysisPerMonth: 20, // per user
+    audioTranscriptionPerMonth: 15, // per user
+    realtimeSessionsPerMonth: 5, // per user
+    maxRealtimeSessionDuration: 300, // 5 minutes
+    hasFounderTestMode: true,
+    hasPitchRecorder: true,
+    hasAdvancedAnalytics: true,
+    hasAPIAccess: true, // limited - 1000 calls/month
+    hasWhiteLabel: false,
+    hasPrioritySupport: true,
+    hasCustomBranding: true,
+    historyRetentionDays: -1, // unlimited
+    canExportPDF: true,
+    canExportPowerPoint: true,
+    maxTeamMembers: 50,
+    hasTeamDashboard: true,
+    hasAdminPanel: true,
+    hasScoreFiltering: true,
+    hasDedicatedDatabase: true, // Dedicated database
+  },
+  
+  enterprise: {
+    pitchAnalysisPerMonth: -1, // unlimited per user
+    audioTranscriptionPerMonth: -1, // unlimited per user
+    realtimeSessionsPerMonth: 10, // per user (بیشتر از بقیه)
+    maxRealtimeSessionDuration: 600, // 10 minutes for enterprise
+    hasFounderTestMode: true,
+    hasPitchRecorder: true,
+    hasAdvancedAnalytics: true,
+    hasAPIAccess: true, // full unlimited
+    hasWhiteLabel: true,
+    hasPrioritySupport: true,
+    hasCustomBranding: true,
+    historyRetentionDays: -1, // unlimited
+    canExportPDF: true,
+    canExportPowerPoint: true,
+    maxTeamMembers: -1, // unlimited
+    hasTeamDashboard: true,
+    hasAdminPanel: true,
+    hasScoreFiltering: true,
+    hasDedicatedDatabase: true,
+  },
+}
+
+// Helper function to get plan limits
+export function getPlanLimits(plan: PlanType): PlanLimits {
+  return PLAN_LIMITS[plan]
+}
+
+// Helper function to check if user can perform action
+export function canPerformAction(
+  plan: PlanType,
+  action: keyof PlanLimits,
+  currentUsage?: number
+): boolean {
+  const limits = getPlanLimits(plan)
+  const limit = limits[action]
+  
+  // Boolean checks
+  if (typeof limit === 'boolean') {
+    return limit
+  }
+  
+  // Numeric checks
+  if (typeof limit === 'number') {
+    // -1 means unlimited
+    if (limit === -1) return true
+    
+    // If no current usage provided, just check if limit exists
+    if (currentUsage === undefined) return limit > 0
+    
+    // Check if under limit
+    return currentUsage < limit
+  }
+  
+  return false
+}
+
+// Helper to get remaining quota
+export function getRemainingQuota(
+  plan: PlanType,
+  action: 'pitchAnalysisPerMonth' | 'audioTranscriptionPerMonth' | 'realtimeSessionsPerMonth',
+  currentUsage: number
+): number {
+  const limits = getPlanLimits(plan)
+  const limit = limits[action]
+  
+  // -1 means unlimited
+  if (limit === -1) return -1
+  
+  return Math.max(0, limit - currentUsage)
+}
+
+// Plan pricing (in USD)
+export const PLAN_PRICING: Record<PlanType, number> = {
+  free: 0,
+  pro: 29,
+  team: 25, // per user (2-10 users)
+  scale: 20, // per user (11-50 users)
+  enterprise: 15, // per user (51+ users), custom pricing
+}
+
+// Minimum team sizes for team plans
+export const MIN_TEAM_SIZES: Record<PlanType, number> = {
+  free: 1,
+  pro: 1,
+  team: 2,
+  scale: 11,
+  enterprise: 51,
+}
+
+// Maximum team sizes (for pricing tiers)
+export const MAX_TEAM_SIZES: Record<PlanType, number> = {
+  free: 1,
+  pro: 1,
+  team: 10,
+  scale: 50,
+  enterprise: -1, // unlimited
+}
+
+// Annual discount (percentage)
+export const ANNUAL_DISCOUNT = 0.16 // 16% off (2 months free)
+
+// Calculate annual price
+export function getAnnualPrice(plan: PlanType, teamSize: number = 1): number {
+  const monthlyPrice = PLAN_PRICING[plan] * teamSize
+  const annualPrice = monthlyPrice * 12
+  return annualPrice * (1 - ANNUAL_DISCOUNT)
+}
+
+// Get plan display name
+export function getPlanDisplayName(plan: PlanType): string {
+  const names: Record<PlanType, string> = {
+    free: 'Free',
+    pro: 'Pro',
+    team: 'Team',
+    scale: 'Scale',
+    enterprise: 'Enterprise',
+  }
+  return names[plan]
+}
+
+// Check if plan is team-based
+export function isTeamPlan(plan: PlanType): boolean {
+  return ['team', 'scale', 'enterprise'].includes(plan)
+}
+
+// Get recommended plan based on team size
+export function getRecommendedPlan(teamSize: number): PlanType {
+  if (teamSize === 1) return 'pro'
+  if (teamSize <= 10) return 'team'
+  if (teamSize <= 50) return 'scale'
+  return 'enterprise'
+}
+
+// Calculate estimated monthly cost for a plan
+export function getEstimatedMonthlyCost(
+  plan: PlanType,
+  teamSize: number = 1,
+  usagePercentage: number = 50 // default 50% usage
+): { cost: number; revenue: number; profit: number; margin: number } {
+  const limits = getPlanLimits(plan)
+  const usage = usagePercentage / 100
+  
+  // Calculate per-user costs
+  const analysisCount = limits.pitchAnalysisPerMonth === -1 ? 20 : limits.pitchAnalysisPerMonth
+  const transcriptionCount = limits.audioTranscriptionPerMonth === -1 ? 15 : limits.audioTranscriptionPerMonth
+  const realtimeCount = limits.realtimeSessionsPerMonth === -1 ? 10 : limits.realtimeSessionsPerMonth
+  
+  const costPerUser = (
+    (analysisCount * 0.00165 * usage) +
+    (transcriptionCount * 0.024 * usage) +
+    (realtimeCount * 4.50 * usage) +
+    0.80 // infrastructure
+  )
+  
+  const totalCost = costPerUser * teamSize
+  const revenue = PLAN_PRICING[plan] * teamSize
+  const profit = revenue - totalCost
+  const margin = revenue > 0 ? (profit / revenue) * 100 : 0
+  
+  return {
+    cost: Math.round(totalCost * 100) / 100,
+    revenue,
+    profit: Math.round(profit * 100) / 100,
+    margin: Math.round(margin * 100) / 100,
+  }
+}
+
+
