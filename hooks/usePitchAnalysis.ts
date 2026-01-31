@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { db } from '@/lib/firebase'
 import { collection, addDoc } from 'firebase/firestore'
 import { useCredits } from './useCredits'
+import type { VCPipelineResult } from '@/lib/vcPipelineTypes'
+import type { ExtractedPitchData } from '@/components/ExtractedDataReview'
 
 export function usePitchAnalysis() {
     const {
@@ -237,5 +239,74 @@ export function usePitchAnalysis() {
         }
     }
 
-    return { handleRecordingComplete }
+    const handleVCPipelineComplete = async (
+        extractedData: ExtractedPitchData,
+        pipelineContextData: { stage?: string; industry?: string; targetAudience?: string },
+        useDeepResearch: boolean = false
+    ) => {
+        setIsLoading(true)
+        setError(null)
+        setPhase('analyzing')
+
+        try {
+            if (!user) throw new Error('You must be logged in')
+            const hasEnough = await checkCredits('pitch_analysis')
+            if (!hasEnough) {
+                setError(`Insufficient credits. Current: ${remainingCredits} Credits`)
+                setPhase('data_review')
+                setIsLoading(false)
+                return
+            }
+
+            const token = await user.getIdToken()
+            const res = await fetch('/api/vc-pipeline', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    extractedData,
+                    contextData: pipelineContextData,
+                    language: 'en',
+                    useDeepResearch,
+                }),
+            })
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}))
+                throw new Error(errData.error || res.statusText || 'VC Pipeline failed')
+            }
+
+            const result = (await res.json()) as VCPipelineResult
+            setAnalysisResult(result)
+
+            if (user) {
+                try {
+                    await addDoc(collection(db, `users/${user.uid}/sessions`), {
+                        name: `Session ${new Date().toLocaleDateString()}`,
+                        date: new Date().toISOString(),
+                        score: result.adjudicator?.finalScore ?? 0,
+                        summary: `VC Pipeline - ${result.adjudicator?.finalVerdict ?? '—'}`,
+                        analysis: result,
+                        duration: '00:00',
+                        transcript: '',
+                        organizationId: organizationContext?.membership?.organizationId,
+                        programId: organizationContext?.membership?.programIds?.[0],
+                    })
+                } catch (e) {
+                    console.error('Error saving VC Pipeline session:', e)
+                }
+            }
+
+            setPhase('results')
+        } catch (err: any) {
+            setError(err.message || 'VC Pipeline failed')
+            setPhase('data_review')
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    return { handleRecordingComplete, handleVCPipelineComplete }
 }

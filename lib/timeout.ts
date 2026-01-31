@@ -32,7 +32,7 @@ const UNLIMITED_CONFIG: TimeoutConfig = {
   OPENAI_CHAT: 600000, // 10 minutes
   OPENAI_ANALYSIS: 600000, // 10 minutes - enough for complex analysis
   OPENAI_REALTIME_SESSION: 300000, // 5 minutes
-  PDF_PARSE: 300000, // 5 minutes
+  PDF_PARSE: 600000, // 10 minutes – large PDFs with images need more time
   FIREBASE_OPERATION: 60000, // 1 minute
 }
 

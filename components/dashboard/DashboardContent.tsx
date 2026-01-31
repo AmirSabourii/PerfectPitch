@@ -10,9 +10,11 @@ import { useDashboardCopy } from '@/hooks/useCopy'
 import { useCredits } from '@/hooks/useCredits'
 
 // Components
-import AudioRecorder from '@/components/AudioRecorder'
+import PitchDeckUpload from '@/components/PitchDeckUpload'
 import PitchRecorder from '@/components/PitchRecorder'
 import PerfectPitchResult from '@/components/PerfectPitchResult'
+import VCPipelineResult from '@/components/VCPipelineResult'
+import type { VCPipelineResult as VCPipelineResultType } from '@/lib/vcPipelineTypes'
 import RealtimeConversation from '@/components/RealtimeConversation'
 import ContextCollection from '@/components/ContextCollection'
 import { HistoryView, ProfileView, SettingsView } from '@/components/DashboardViews'
@@ -20,6 +22,7 @@ import { PricingView } from '@/components/PricingView'
 import { CreditManagement } from '@/components/CreditManagement'
 import { CreditIndicator } from '@/components/CreditIndicator'
 import { RoleSelector } from '@/components/RoleSelector'
+import ExtractedDataReview, { ExtractedPitchData } from '@/components/ExtractedDataReview'
 
 const MinimalLoading = ({ label }: { label: string }) => {
     const [dots, setDots] = React.useState(0)
@@ -62,18 +65,56 @@ const MinimalLoading = ({ label }: { label: string }) => {
 
 export function DashboardContent() {
     const {
-        currentView, phase, setPhase,
+        currentView, setCurrentView, phase, setPhase,
         inputMethod, setInputMethod,
         setContextData, contextData,
         analysisResult, transcript, documentContext,
         selectedRole, setSelectedRole,
-        setError, resetDashboard
+        setError, resetDashboard,
+        extractedData, setExtractedData
     } = useDashboard()
 
     const { user, organizationContext } = useAuth()
-    const { handleRecordingComplete } = usePitchAnalysis()
+    const { handleVCPipelineComplete } = usePitchAnalysis()
     const { copy, isRTL } = useDashboardCopy()
+
+    function isVCPipelineResult(r: typeof analysisResult): r is VCPipelineResultType {
+        return r != null && typeof r === 'object' && 'deepResearch' in r && 'riskFirst' in r && 'upsideFirst' in r && 'adjudicator' in r
+    }
     const { remainingCredits, loading: creditsLoading } = useCredits()
+
+    // Handle file upload completion
+    const handleFileProcessed = (parsedContext: string) => {
+        try {
+            const data: ExtractedPitchData = JSON.parse(parsedContext)
+            setExtractedData(data)
+            setPhase('data_review')
+        } catch (error) {
+            console.error('Failed to parse extracted data:', error)
+            setError('Failed to process file data')
+        }
+    }
+
+    // Handle data confirmation: run VC Pipeline (optional Deep Research + 2 personalities + Adjudicator)
+    const handleDataConfirm = (
+        confirmedData: ExtractedPitchData,
+        options?: { useDeepResearch?: boolean }
+    ) => {
+        setContextData({
+            ...contextData,
+            stage: confirmedData.stage,
+            industry: confirmedData.industry
+        })
+        handleVCPipelineComplete(
+            confirmedData,
+            {
+                stage: confirmedData.stage,
+                industry: confirmedData.industry,
+                targetAudience: contextData.targetAudience || 'VCs'
+            },
+            options?.useDeepResearch ?? false
+        )
+    }
 
     const viewMeta: Record<string, { title: string; subtitle: string }> = {
         dashboard: { title: copy.header.practiceTitle, subtitle: copy.header.practiceSubtitle },
@@ -210,28 +251,16 @@ export function DashboardContent() {
                                         <button onClick={() => setPhase('selection')} className="text-xs text-zinc-500 hover:text-white flex items-center gap-1 transition-colors">
                                             {copy.recording.changeMode}
                                         </button>
-                                        
-                                        <div className="flex items-center gap-3">
-                                            {/* Credit Indicator */}
-                                            <CreditIndicator
-                                                remainingCredits={remainingCredits}
-                                                loading={creditsLoading}
-                                                onPurchaseClick={() => setCurrentView('credits')}
-                                            />
-                                            
-                                            {inputMethod !== 'file' && (
-                                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-zinc-400">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> {copy.recording.liveBadge}
-                                                </div>
-                                            )}
-                                        </div>
+                                        <CreditIndicator
+                                            remainingCredits={remainingCredits}
+                                            loading={creditsLoading}
+                                            onPurchaseClick={() => setCurrentView('credits')}
+                                        />
                                     </div>
 
                                     <div className="flex-1 min-h-0 bg-[#0A0A0A] border border-white/10 rounded-3xl relative overflow-hidden flex flex-col">
-                                        {inputMethod !== 'file' && <div className="absolute top-0 right-0 p-32 bg-indigo-500/5 blur-3xl rounded-full -mr-16 -mt-16 pointer-events-none" />}
-                                        <AudioRecorder
-                                            mode={inputMethod}
-                                            onRecordingComplete={handleRecordingComplete}
+                                        <PitchDeckUpload
+                                            onFileProcessed={handleFileProcessed}
                                             onError={setError}
                                         />
                                     </div>
@@ -245,12 +274,38 @@ export function DashboardContent() {
                             </motion.div>
                         )}
 
+                        {phase === 'data_review' && extractedData && (
+                            <motion.div 
+                                key="data_review"
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                className="h-full w-full flex flex-col min-h-0 p-4"
+                            >
+                                <ExtractedDataReview
+                                    extractedData={extractedData}
+                                    onConfirm={handleDataConfirm}
+                                    onCancel={() => {
+                                        setExtractedData(null)
+                                        setPhase('recording')
+                                    }}
+                                />
+                            </motion.div>
+                        )}
+
                         {phase === 'results' && analysisResult && (
                             <motion.div key="results" className="w-full h-full">
-                                <PerfectPitchResult
-                                    analysis={analysisResult as any}
-                                    onReset={resetDashboard}
-                                />
+                                {isVCPipelineResult(analysisResult) ? (
+                                    <VCPipelineResult
+                                        result={analysisResult as VCPipelineResultType}
+                                        onReset={resetDashboard}
+                                    />
+                                ) : (
+                                    <PerfectPitchResult
+                                        analysis={analysisResult as any}
+                                        onReset={resetDashboard}
+                                    />
+                                )}
                             </motion.div>
                         )}
 

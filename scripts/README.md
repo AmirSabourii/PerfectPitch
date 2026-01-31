@@ -1,5 +1,26 @@
 # Scripts Directory
 
+## Investor Directory Seed
+
+### seed-investor-directory.js
+
+Seeds the Middle East VC/startup program directory into Firestore (`investorDirectory` collection). Reads from `data/middle-east-investors.json`. Re-run to add or update entries (uses name+country as key).
+
+**Usage:**
+```bash
+# Use default data file: data/middle-east-investors.json
+node scripts/seed-investor-directory.js
+
+# Use custom JSON file (same schema)
+node scripts/seed-investor-directory.js path/to/investors.json
+```
+
+**Prerequisites:** Same as credit scripts (Firebase Admin, `GOOGLE_APPLICATION_CREDENTIALS` or application default).
+
+After seeding, use `GET /api/investor-directory?country=Saudi Arabia&type=vc&stage=seed` to list entries.
+
+---
+
 ## Credit Management Scripts
 
 ### Prerequisites

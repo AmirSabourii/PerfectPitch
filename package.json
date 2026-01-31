@@ -9,10 +9,13 @@
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:agent1": "jest lib/__tests__/vcPipelineAgent1.test.ts --verbose"
   },
   "dependencies": {
+    "@google/genai": "^1.38.0",
     "@sendgrid/mail": "^8.1.6",
+    "@tavily/core": "^0.7.1",
     "@types/adm-zip": "^0.5.7",
     "adm-zip": "^0.5.16",
     "axios": "^1.6.2",

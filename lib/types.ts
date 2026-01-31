@@ -74,7 +74,7 @@ export interface ContextData {
 }
 
 export type View = 'dashboard' | 'history' | 'profile' | 'settings' | 'pricing' | 'pitch_recorder' | 'credits'
-export type Phase = 'selection' | 'context_collection' | 'recording' | 'analyzing' | 'results' | 'role_selection' | 'qna'
+export type Phase = 'selection' | 'context_collection' | 'recording' | 'analyzing' | 'results' | 'role_selection' | 'qna' | 'data_review'
 export type InputMethod = 'file' | 'video' | 'both'
 
 // ============================================

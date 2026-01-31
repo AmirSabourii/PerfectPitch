@@ -3,7 +3,9 @@
 import { createContext, useContext, useState, ReactNode } from 'react'
 import { DeepAnalysisResult, ContextData, View, Phase, InputMethod } from '@/lib/types'
 import { PerfectPitchAnalysis } from '@/lib/perfectPitchTypes'
+import { VCPipelineResult } from '@/lib/vcPipelineTypes'
 import { RoleType } from '@/components/RoleSelector'
+import { ExtractedPitchData } from '@/components/ExtractedDataReview'
 
 interface DashboardContextType {
     // State
@@ -13,10 +15,11 @@ interface DashboardContextType {
     isLoading: boolean
     error: string | null
     transcript: string
-    analysisResult: DeepAnalysisResult | PerfectPitchAnalysis | null
+    analysisResult: DeepAnalysisResult | PerfectPitchAnalysis | VCPipelineResult | null
     selectedRole: RoleType
     documentContext: string
     contextData: ContextData
+    extractedData: ExtractedPitchData | null
 
     // Setters
     setCurrentView: (view: View) => void
@@ -25,10 +28,11 @@ interface DashboardContextType {
     setIsLoading: (loading: boolean) => void
     setError: (error: string | null) => void
     setTranscript: (text: string) => void
-    setAnalysisResult: (result: DeepAnalysisResult | PerfectPitchAnalysis | null) => void
+    setAnalysisResult: (result: DeepAnalysisResult | PerfectPitchAnalysis | VCPipelineResult | null) => void
     setSelectedRole: (role: RoleType) => void
     setDocumentContext: (context: string) => void
     setContextData: (data: ContextData) => void
+    setExtractedData: (data: ExtractedPitchData | null) => void
 
     // Helpers
     resetDashboard: () => void
@@ -47,6 +51,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const [selectedRole, setSelectedRole] = useState<RoleType>('vc')
     const [documentContext, setDocumentContext] = useState<string>('')
     const [contextData, setContextData] = useState<ContextData>({ stage: '', industry: '', targetAudience: 'VCs' })
+    const [extractedData, setExtractedData] = useState<ExtractedPitchData | null>(null)
 
     const resetDashboard = () => {
         setPhase('selection')
@@ -54,6 +59,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         setAnalysisResult(null)
         setDocumentContext('')
         setError(null)
+        setExtractedData(null)
     }
 
     return (
@@ -68,6 +74,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
             selectedRole, setSelectedRole,
             documentContext, setDocumentContext,
             contextData, setContextData,
+            extractedData, setExtractedData,
             resetDashboard
         }}>
             {children}

@@ -11,8 +11,11 @@ import {
   StrategicRecommendations
 } from './types'
 
-// Timeout for deep research (60 seconds as per design)
+// Timeout for deep research (60 seconds per design)
 const DEEP_RESEARCH_TIMEOUT = 60000
+
+// Model used for deep research – gpt-4o-search-preview has built-in web search (Chat Completions); fallback gpt-4o if search model unavailable
+const DEEP_RESEARCH_MODEL = process.env.DEEP_RESEARCH_MODEL || 'gpt-4o-search-preview'
 
 // Lazily instantiate the OpenAI client
 let cachedClient: OpenAI | null = null
@@ -95,92 +98,69 @@ function handleOpenAIError(error: any, language: 'en' | 'fa'): DeepResearchError
  */
 function getSystemPrompt(language: 'en' | 'fa'): string {
   if (language === 'fa') {
-    return `شما یک تحلیلگر تحقیقات بازار هستید که تحقیق عمیق درباره ایده‌های کسب‌وکار انجام می‌دهید.
+    return `شما یک تحلیلگر تحقیقات بازار هستید. خروجی شما فقط یک آبجکت JSON با ساختار ثابت زیر است (کلیدها camelCase و انگلیسی؛ محتوا می‌تواند فارسی باشد).
 
-وظیفه شما تحلیل یک ایده کسب‌وکار و ارائه تحقیق جامع در چارچوب زیر است:
+ساختار اجباری (دقیقاً همین کلیدها):
+- competitorAnalysis: { directCompetitors: [{name, description, strengths[], weaknesses[], differentiators[], pricing}], indirectCompetitors: [], marketPositioning }
+- targetAudienceAnalysis: { personas: [{name, description, painPoints[], needs[], reasonsToUse[], willingnessToPay}], marketSize: {tam, sam, som, methodology}, adoptionBarriers[], adoptionDrivers[] }
+- valuePropositionAnalysis: { coreValue, problemsSolved: [{problem, solution, priority, userImpact}], valueHierarchy[], recommendedMessaging[] }
+- marketAnalysis: { marketSize: {tam, sam, som, methodology}, trends: [{trend, impact, timeframe, relevance}], opportunities[], threats: [{threat, severity, likelihood, mitigation}], growthProjection }
+- competitiveAdvantage: { advantages: [{advantage, type, strength, explanation}], moat, sustainability, defensibility }
+- risksAndChallenges: { risks: [{risk, category, probability, impact, mitigation}], challenges: [{challenge, difficulty, timeframe, approach}], mitigationStrategies[] }
+- strategicRecommendations: { quickWins: [{title, description, rationale, expectedImpact, effort, timeframe, priority}], longTermInitiatives: [], priorityOrder[], keyMetrics[] }
 
-1. تحلیل رقبا (Competitor Analysis)
-   - شناسایی 3-5 رقیب مستقیم
-   - تحلیل نقاط قوت، ضعف، قیمت‌گذاری
-   - تعیین تمایزهای کلیدی
-
-2. تحلیل کاربران هدف (Target Audience Analysis)
-   - تعریف 2-3 persona کاربری
-   - شناسایی pain points و نیازها
-   - توضیح دلایل استفاده از محصول
-   - تخمین اندازه بازار (TAM, SAM, SOM)
-
-3. تحلیل ارزش پیشنهادی (Value Proposition Analysis)
-   - شناسایی ارزش اصلی
-   - لیست مشکلات حل شده با اولویت
-   - توصیه استراتژی پیام‌رسانی
-
-4. تحلیل بازار (Market Analysis)
-   - تخمین TAM, SAM, SOM
-   - شناسایی روندهای فعلی
-   - لیست فرصت‌ها و تهدیدها
-   - پیش‌بینی رشد
-
-5. مزیت رقابتی (Competitive Advantage)
-   - شناسایی مزایای کلیدی
-   - ارزیابی پایداری و قابلیت دفاع
-
-6. ریسک‌ها و چالش‌ها (Risks and Challenges)
-   - لیست ریسک‌های اصلی با احتمال/تاثیر
-   - شناسایی چالش‌های کلیدی
-   - استراتژی‌های کاهش ریسک
-
-7. توصیه‌های استراتژیک (Strategic Recommendations)
-   - ارائه حداقل 5 توصیه عملی
-   - جداسازی quick wins از ابتکارات بلندمدت
-   - اولویت‌بندی بر اساس تاثیر و تلاش
-
-خروجی باید JSON معتبر مطابق با schema باشد.
-همه متن‌ها باید به فارسی باشند.`
+فقط JSON معتبر برگردانید، بدون markdown.`
   }
   
-  return `You are a business research analyst conducting deep market research.
+  return `You are a business research analyst conducting deep market research. Your output MUST be a single JSON object that matches the structure below exactly (camelCase keys). This structure is required for the UI to display your analysis.
 
-Your task is to analyze a business idea and provide comprehensive research in the following framework:
+REQUIRED JSON STRUCTURE (follow exactly):
 
-1. COMPETITOR ANALYSIS
-   - Identify 3-5 direct competitors
-   - Analyze strengths, weaknesses, pricing
-   - Determine key differentiators
+{
+  "competitorAnalysis": {
+    "directCompetitors": [{"name": "string", "description": "string", "strengths": ["string"], "weaknesses": ["string"], "differentiators": ["string"], "pricing": "string"}],
+    "indirectCompetitors": [{"name": "string", "description": "string"}],
+    "marketPositioning": "string"
+  },
+  "targetAudienceAnalysis": {
+    "personas": [{"name": "string", "description": "string", "painPoints": ["string"], "needs": ["string"], "reasonsToUse": ["string"], "willingnessToPay": "string"}],
+    "marketSize": {"tam": "string", "sam": "string", "som": "string", "methodology": "string"},
+    "adoptionBarriers": ["string"],
+    "adoptionDrivers": ["string"]
+  },
+  "valuePropositionAnalysis": {
+    "coreValue": "string",
+    "problemsSolved": [{"problem": "string", "solution": "string", "priority": "high|medium|low", "userImpact": "string"}],
+    "valueHierarchy": ["string"],
+    "recommendedMessaging": ["string"]
+  },
+  "marketAnalysis": {
+    "marketSize": {"tam": "string", "sam": "string", "som": "string", "methodology": "string"},
+    "trends": [{"trend": "string", "impact": "positive|negative|neutral", "timeframe": "string", "relevance": "string"}],
+    "opportunities": [{"opportunity": "string", "potential": "high|medium|low", "timeToCapture": "string"}],
+    "threats": [{"threat": "string", "severity": "high|medium|low", "likelihood": "high|medium|low", "mitigation": "string"}],
+    "growthProjection": "string"
+  },
+  "competitiveAdvantage": {
+    "advantages": [{"advantage": "string", "type": "technology|market|team|timing|other", "strength": "strong|moderate|weak", "explanation": "string"}],
+    "moat": "string",
+    "sustainability": "string",
+    "defensibility": "string"
+  },
+  "risksAndChallenges": {
+    "risks": [{"risk": "string", "category": "market|technical|financial|regulatory|competitive", "probability": "high|medium|low", "impact": "high|medium|low", "mitigation": "string"}],
+    "challenges": [{"challenge": "string", "difficulty": "high|medium|low", "timeframe": "string", "approach": "string"}],
+    "mitigationStrategies": ["string"]
+  },
+  "strategicRecommendations": {
+    "quickWins": [{"title": "string", "description": "string", "rationale": "string", "expectedImpact": "string", "effort": "low|medium|high", "timeframe": "string", "priority": number}],
+    "longTermInitiatives": [{"title": "string", "description": "string", "rationale": "string", "expectedImpact": "string", "effort": "low|medium|high", "timeframe": "string", "priority": number}],
+    "priorityOrder": ["string"],
+    "keyMetrics": ["string"]
+  }
+}
 
-2. TARGET AUDIENCE ANALYSIS
-   - Define 2-3 user personas
-   - Identify pain points and needs
-   - Explain reasons to use the product
-   - Estimate market size (TAM, SAM, SOM)
-
-3. VALUE PROPOSITION ANALYSIS
-   - Identify core value
-   - List problems solved with priorities
-   - Recommend messaging strategy
-
-4. MARKET ANALYSIS
-   - Estimate TAM, SAM, SOM
-   - Identify current trends
-   - List opportunities and threats
-   - Growth projection
-
-5. COMPETITIVE ADVANTAGE
-   - Identify key advantages
-   - Assess sustainability and defensibility
-
-6. RISKS AND CHALLENGES
-   - List major risks with probability/impact
-   - Identify key challenges
-   - Mitigation strategies
-
-7. STRATEGIC RECOMMENDATIONS
-   - Provide 5+ actionable recommendations
-   - Separate quick wins from long-term initiatives
-   - Prioritize by impact and effort
-
-Output must be valid JSON matching the DeepResearchResult schema.
-All text should be in English.`
+Rules: Use only these top-level keys. Each nested object/array must follow the keys above. Return only valid JSON, no markdown or code fence. All text in English.`
 }
 
 /**
@@ -224,8 +204,32 @@ ${ideaSummary.targetMarket}
 KEY DIFFERENTIATOR:
 ${ideaSummary.keyDifferentiator}
 
-Please conduct comprehensive research and provide analysis in the specified framework.
+Return a single JSON object with exactly these top-level keys (camelCase): competitorAnalysis, targetAudienceAnalysis, valuePropositionAnalysis, marketAnalysis, competitiveAdvantage, risksAndChallenges, strategicRecommendations. Each key must be an object (not a string). No other keys at the top level.
 `
+}
+
+/** Map snake_case to camelCase for required top-level keys */
+const DEEP_RESEARCH_KEY_MAP: Record<string, string> = {
+  competitor_analysis: 'competitorAnalysis',
+  target_audience_analysis: 'targetAudienceAnalysis',
+  value_proposition_analysis: 'valuePropositionAnalysis',
+  market_analysis: 'marketAnalysis',
+  competitive_advantage: 'competitiveAdvantage',
+  risks_and_challenges: 'risksAndChallenges',
+  strategic_recommendations: 'strategicRecommendations',
+}
+
+/**
+ * Normalize parsed JSON: ensure required camelCase keys exist (copy from snake_case if present)
+ */
+function normalizeDeepResearchParsed(parsed: any): any {
+  const out = { ...parsed }
+  for (const [snake, camel] of Object.entries(DEEP_RESEARCH_KEY_MAP)) {
+    if (out[camel] == null && out[snake] != null && typeof out[snake] === 'object') {
+      out[camel] = out[snake]
+    }
+  }
+  return out
 }
 
 /**
@@ -233,8 +237,6 @@ Please conduct comprehensive research and provide analysis in the specified fram
  */
 function validateDeepResearchResult(result: any): { valid: boolean; errors: string[] } {
   const errors: string[] = []
-  
-  // Check required top-level fields
   const requiredFields = [
     'competitorAnalysis',
     'targetAudienceAnalysis',
@@ -242,22 +244,20 @@ function validateDeepResearchResult(result: any): { valid: boolean; errors: stri
     'marketAnalysis',
     'competitiveAdvantage',
     'risksAndChallenges',
-    'strategicRecommendations'
+    'strategicRecommendations',
   ]
-  
+
   for (const field of requiredFields) {
     if (!result[field] || typeof result[field] !== 'object') {
       errors.push(`Missing or invalid ${field}`)
     }
   }
-  
-  // Relaxed validation - just check basic structure exists
-  // Don't enforce strict counts as GPT-4o might not always follow exactly
-  
-  return {
-    valid: errors.length === 0,
-    errors
+
+  if (errors.length > 0) {
+    console.log('[performDeepResearch] Parsed top-level keys:', Object.keys(result))
   }
+
+  return { valid: errors.length === 0, errors }
 }
 
 /**
@@ -286,17 +286,24 @@ export async function performDeepResearch(
     try {
       const openai = getOpenAIClient()
       
-      console.log(`[performDeepResearch] Calling OpenAI GPT-4o (elapsed: ${Date.now() - startTime}ms)`)
-      
-      response = await openai.chat.completions.create({
-        model: 'gpt-4o', // Using GPT-4o for deep research
+      console.log(`[performDeepResearch] Calling OpenAI model=${DEEP_RESEARCH_MODEL} (elapsed: ${Date.now() - startTime}ms)`)
+      // Search-preview models don't support temperature; deep-research doesn't support response_format
+      const isSearchPreview = DEEP_RESEARCH_MODEL.includes('search-preview') || DEEP_RESEARCH_MODEL.includes('search-api')
+      const createOptions: Record<string, unknown> = {
+        model: DEEP_RESEARCH_MODEL,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        response_format: { type: 'json_object' },
-        temperature: 0.7,
-      }, {
+        max_tokens: 8000,
+      }
+      if (!isSearchPreview) {
+        createOptions.temperature = 0.5
+      }
+      if (!DEEP_RESEARCH_MODEL.includes('deep-research')) {
+        createOptions.response_format = { type: 'json_object' }
+      }
+      response = await openai.chat.completions.create(createOptions as any, {
         signal: controller.signal,
       })
       
@@ -309,16 +316,18 @@ export async function performDeepResearch(
       throw handleOpenAIError(openaiError, language)
     }
     
-    // Parse response
-    const content = response.choices[0]?.message?.content || '{}'
-    
+    // Parse response (strip markdown code fence if present)
+    let content = response.choices[0]?.message?.content || '{}'
+    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (jsonMatch) content = jsonMatch[1].trim()
+
     let parsed: any
     try {
       parsed = JSON.parse(content)
-      console.log(`[performDeepResearch] Response parsed successfully`)
+      console.log(`[performDeepResearch] Response parsed successfully, keys:`, Object.keys(parsed))
     } catch (parseError: any) {
       console.error('[performDeepResearch] Failed to parse OpenAI response:', parseError)
-      console.error('[performDeepResearch] Response content:', content.substring(0, 500))
+      console.error('[performDeepResearch] Response content (first 800 chars):', content.substring(0, 800))
       throw new DeepResearchError(
         language === 'fa' 
           ? 'خطا در پردازش پاسخ تحلیل. لطفا دوباره تلاش کنید.'
@@ -328,7 +337,9 @@ export async function performDeepResearch(
         true
       )
     }
-    
+
+    parsed = normalizeDeepResearchParsed(parsed)
+
     // Validate result structure
     const validation = validateDeepResearchResult(parsed)
     if (!validation.valid) {
